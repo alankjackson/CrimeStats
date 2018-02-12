@@ -1,0 +1,170 @@
+---
+title: "Geocoding"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+library(ggmap)
+library(stringr)
+library(tidyr)
+library(dplyr)
+
+# Long/Lat (lowerleft) Long/Lat (upper right)
+HoustonBoundary <- c(-95.789963, 29.518566, -95.005814, 30.117875)
+gmap = get_map(location=c(-95.4142, 29.7907), source="google",zoom=12)
+
+googleproj4 <- "+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext  +no_defs"
+googlecrs <- "4326"
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Build a new data frame with only addresses, delete incomplete records, and
+join with last GeoTable so we don't go off and repeat work that has already
+been done.
+
+
+```{r Build a clean input for google geocode, eval=FALSE}
+# then clear up to only unique values and split each record in two, one for each
+# end of the block. Output will be a datafile of keys and addresses.
+
+df = readRDS("~/Dropbox/CrimeStats/District2aCleanData.rds")
+geotable <- readRDS("~/Dropbox/CrimeStats/GeoTable.rds")
+
+#   Build a new dataframe with addresses in it
+workingset <- data.frame(paste(df$Block_Range,df$Street,", Houston, TX"), stringsAsFactors = FALSE)
+colnames(workingset)[1] = "Address"
+
+workingset$Block_Range <- df$Block_Range
+
+workingset <- unique(workingset) # filter down to unique addresses
+#   kill off NA's
+workingset <- as.data.frame(workingset[!grepl("9 NA ,|UNK NA", workingset$Address),])
+colnames(workingset)[1] = "Address"
+
+# split out beginning and ending block addresses and street name
+workingset[,3] = str_extract(workingset$Address,"^\\d+")
+workingset[,4] = str_extract(workingset$Address,"\\d+ ")
+workingset[,5] = str_extract(workingset$Address," .+$")
+colnames(workingset)[3] = "Add1"
+colnames(workingset)[4] = "Add2"
+colnames(workingset)[5] = "Street"
+
+# delete records that are incomplete
+workingset <- workingset[complete.cases(workingset),]
+
+# match with geotable to use lat long values that are already known
+workingset <- left_join(workingset, geotable, by="Address")
+workingset <- select(workingset,Address, Add1, Add2, Street.x, avglon, avglat)
+colnames(workingset)[4]="Street"
+
+```
+
+Actually go get the lat long values from Google, 2400 per day.
+When done, redo for those that were skipped or failed, and redo
+some that are wierd - sometimes second time works.
+Delete any coordinates that land outside the city box, do some 
+cleanup, average the block range values, unless there is only
+on lat/long set, in which case use it.
+Finally save the new GeoTable.
+
+
+```{r get lat longs from google, eval=FALSE}
+# run geocode for each record up to the daily limit, and then average the lat/long
+# values from each end of the block to get a true block center value.
+mask <- !complete.cases(workingset)
+latlong1 = geocode(paste(workingset[mask,]$Add1[1:2400], workingset[mask,]$Street[1:2400])) 
+workingset$lon1 <- NA
+workingset$lat1 <- NA
+workingset$lon2 <- NA
+workingset$lat2 <- NA
+workingset[mask,]$lon1[1:2400] = latlong1$lon
+workingset[mask,]$lat1[1:2400] = latlong1$lat
+
+##### Run on 26th after 8PM 
+geocode(paste(workingset[mask,]$Add1[2401], workingset[mask,]$Street[2401]))
+latlong2 = geocode(paste(workingset[mask,]$Add1[2401:4549], workingset[mask,]$Street[2401:4549])) 
+workingset[mask,]$lon1[2401:4549] = latlong2$lon
+workingset[mask,]$lat1[2401:4549] = latlong2$lat
+##### Run on 27th after 8:30PM
+latlong3 = geocode(paste(workingset[mask,]$Add2[1:2400], workingset[mask,]$Street[1:2400])) 
+workingset[mask,]$lon2[1:2400] = latlong3$lon
+workingset[mask,]$lat2[1:2400] = latlong3$lat
+##### Run on 28th after 9PM
+latlong4 = geocode(paste(workingset[mask,]$Add2[2401:4549], workingset[mask,]$Street[2401:4549])) 
+workingset[mask,]$lon2[2401:4549] = latlong4$lon
+workingset[mask,]$lat2[2401:4549] = latlong4$lat
+##### Cleanup the ones that got skipped
+mask1 <- is.na(workingset$lon1)&is.na(workingset$avglon)
+mask2 <- is.na(workingset$lon2)&is.na(workingset$avglon)
+
+######   start here on Monday after 9
+latlong1 = geocode(paste(workingset[mask1,]$Add1, workingset[mask1,]$Street))
+workingset[mask1,]$lon1 = latlong1$lon
+workingset[mask1,]$lat1 = latlong1$lat
+
+workingset$Address <- str_replace(workingset$Address,"MCEWEN","MC EWEN")
+workingset$Street <- str_replace(workingset$Street,"MCEWEN","MC EWEN")
+workingset$Address <- str_replace(workingset$Address,"WESCOTT FRONTAGE", "WESCOTT")
+workingset$Street <- str_replace(workingset$Street,"WESCOTT FRONTAGE", "WESCOTT")
+
+latlong2 = geocode(paste(workingset[mask2,]$Add2, workingset[mask2,]$Street))
+workingset[mask2,]$lon2 = latlong2$lon
+workingset[mask2,]$lat2 = latlong2$lat
+
+###   some lat/longs are bogus. Find them and redo
+#   If the distance between latlong1 and 2 > 5x the median, redo
+distance <- abs(workingset$lat2- workingset$lat1) + abs(workingset$lon2- workingset$lon1)
+distance <- as.data.frame(distance)
+distance[is.na(distance)] <- 0
+meddist <- 5*median(distance$distance, na.rm = TRUE)
+filter(distance, distance>0.01&distance<5) %>%
+ ggplot() +
+ geom_histogram(aes(x=distance),binwidth = 0.01)
+
+bogus <- distance>meddist
+########   Wednesday start here
+latlong1 = geocode(paste(workingset[bogus,]$Add1, workingset[bogus,]$Street))
+workingset[bogus,]$lon1 - latlong1$lon
+workingset[bogus,]$lat1 - latlong1$lat
+
+workingset[bogus,]$lon1 = latlong1$lon
+workingset[bogus,]$lat1 = latlong1$lat
+
+latlong2 = geocode(paste(workingset[bogus,]$Add2, workingset[bogus,]$Street))
+
+workingset[bogus,]$lon2 - latlong2$lon
+workingset[bogus,]$lat2 - latlong2$lat
+
+workingset[bogus,]$lon2 = latlong2$lon
+workingset[bogus,]$lat2 = latlong2$lat
+
+#   set any coordinate outside the box to NA
+
+outside <- workingset$lon1<HoustonBoundary[1] | workingset$lon1>HoustonBoundary[3] | is.na(workingset$lon1)
+workingset$lon1[outside] <- NA
+
+outside <- workingset$lon2<HoustonBoundary[1] | workingset$lon2>HoustonBoundary[3] | is.na(workingset$lon2)
+workingset$lon2[outside] <- NA
+
+outside <- workingset$lat1<HoustonBoundary[2] | workingset$lat1>HoustonBoundary[4] | is.na(workingset$lat1)
+workingset$lat1[outside] <- NA
+
+outside <- workingset$lat2<HoustonBoundary[2] | workingset$lat2>HoustonBoundary[4] | is.na(workingset$lat2)
+workingset$lat2[outside] <- NA
+
+#   Average lats and longs to get block center coordinates
+
+keepworking = workingset
+workingset$avglon <- rowMeans(subset(workingset, select=c(lon1, lon2)), na.rm = TRUE) 
+workingset$avglat <- rowMeans(subset(workingset, select=c(lat1, lat2)), na.rm = TRUE) 
+
+newGeotable <- workingset %>% select(Address, Street, Block_Range, avglon, avglat)
+names(newGeotable) <- c("Address", "Street", "Block_Range","Longitude", "Latitude")
+saveRDS(newGeotable, "~/Dropbox/CrimeStats/GeoTable.rds")
+
+```
+
+
+

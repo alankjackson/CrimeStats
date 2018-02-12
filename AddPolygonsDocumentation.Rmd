@@ -1,0 +1,215 @@
+---
+title: "AddingPolygonsToR"
+author: "Alan Jackson"
+date: "February 6, 2018"
+output: html_document
+---
+
+It turned out to be quite a struggle to add census tracts, zipcodes, and
+neighborhoods to my R project. What I wanted, at the end, was to associate
+the name of the item with my geocoded points, so that they could be used for
+subsetting the main dataset. Of course, I also want to plot them on my maps
+as well.
+In this writeup, I will go through all the steps that I have settled on. 
+Some items I did more than one way, but for a variety of reasons I have settled
+on what follows. I initially used SpatialDataFrames, but ran into some
+difficulties, so I changed and ended up using Simple Feature ("sf"). Which
+worked well.
+
+```{r setup, include=FALSE}
+
+options(stringsAsFactors = FALSE)
+library(dplyr)
+require(rgdal)
+library(sf)
+
+googlecrs <- 4326
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r build test dataset}
+#  So this is a small dataset like the one I used - mine had thousands
+#  of points. It was created by using the google api to geocode addresses,
+#  so really I had complete addresses rather than just streets, this is just
+#  to give the flavor of what I had.
+latitude <- c( 29.78634,  29.80760,  29.77670,  29.81192)
+longitude <- c(-95.38897, -95.40948, -95.39690, -95.41130)
+Street <- c("STUDEWOOD","SHEPHERD","KATY","W 28TH")
+AddressPoints <- data.frame(Street, longitude, latitude)
+#   Lets turn this into a real, georeferenced "Simple Feature" data frame
+#   Since the lat/longs came from Google, we know that they live in
+#   EPSG 4326
+
+AddressPoints <- st_as_sf(AddressPoints, coords=c("longitude", "latitude"), crs=googlecrs, agr = "identity")
+
+```
+
+*******************
+Add Neighborhoods
+*******************
+Neighborhoods are a difficult dataset. The definition is rather loose, and they may overlap. And the sources for neighborhood data are limited. I looked at three: Zillow, City of Houston GIS, and Wikimapia. Zillow is very nice data, easy to download and work with, but not complete. I think they disallow overlapping polygons. The City of Houston is really subdivisions, and is a work in progress, so it didn't help much. So Wikimapia. The data itself is excellent. For some points, as many as 5 associated neighborhoods, so it seems to be pretty complete. Plus, if I find errors, I can edit the source data.
+However, many challenges downloading and then loading the data into R.
+
+To download, I used the Wikimapia API builder, noted in http://blog.cartong.org/2014/10/30/tutorial-using-wikimapia-data-in-qgis/
+which generated a command line of
+http://api.wikimapia.org/?key=MYKEY-GETYOUROWN&function=box&coordsby=bbox&bbox=-95.789963%2C29.518566%2C-95.005814%2C30.005814&category=4621&count=2000&format=kml
+
+I generated JSON, KML, and XML outputs. I struggled for hours to try to read
+*any* of the three into R, without success. Finally I got a clue and found
+success by going outside R and using ogr. The Wikimapia files appear to be
+malformed somehow, but ogr can handle it.
+
+ogr2ogr -f GML Neighborhoods.gml Neighborhoods.kml -explodecollections
+
+ogr2ogr -f "ESRI Shapefile" Nbhd_point.shp Neighborhoods.gml -sql "select * from Layer0 where OGR_GEOMETRY='POINT'" -lco SHPT=POINT
+
+ogr2ogr -f "ESRI Shapefile" Nbhd_line.shp Neighborhoods.gml -sql "select * from Layer0 where OGR_GEOMETRY='LINESTRING'" -lco SHPT=ARC
+
+
+```{r Add Neighborhoods}
+#   Read in the shapefiles we created with ogr2ogr, to a simple feature
+Neighborhoodpolys <- read_sf("/home/ajackson/CrimeStats/NeighborhoodPolygons/Wikimapia/Nbhd_line.shp")
+# now need to delete extra crap from file, just to be tidy
+temp <- Neighborhoodpolys %>% select(Name, descriptio, geometry)
+summary(temp) # check to see what it looks like. Could also do plot(temp)
+#     Name            descriptio                      geometry  
+# Length:975         Length:975         GEOMETRYCOLLECTION:975  
+# Class :character   Class :character   epsg:4326         :  0  
+# Mode  :character   Mode  :character   +proj=long...     :  0  
+
+#   set CRS. Since Wikimapia is based on Google maps photos, CRS is 
+#   same as Google.
+st_crs(temp) <- googlecrs
+#   turn lines into polygons, just in case
+temp <- st_polygonize(temp)
+# st_intersects to see if points are inside poly
+#  This is a matrix of T/F values, npoints x npolys in size
+#  if a point is in multiple polys it will show up here
+a <- st_intersects(AddressPoints, temp, sparse = FALSE)
+max(rowSums(a)) # this is the maximum number of polys for some point
+hist(rowSums(a))# just curious how they are distributed.
+#   Add one new field that contains a list of all the neighborhoods 
+#   the point falls into.
+# But first fix a few issues
+temp$Name <- str_replace(temp$Name,"&#039;","'")
+temp$Name <- str_replace(temp$Name,"Associaition","Association")
+temp$Name <- str_replace(temp$Name,"&amp;","&")
+
+#   collect all the neighborhoods a point falls into, separate by commas,
+#   and put into the Nbhd field
+diddle <- function (i) {paste(temp$Name[i], collapse=', ')}
+AddressPoints$Nbhd <-  apply(a,1,diddle)  #  work on "a" row-wise
+
+AddressPoints$Nbhd
+#[1] "Greater Heights (SN 15), First Ward"
+#[2] "Greater Heights (SN 15)"            
+#[3] ""                                   
+#[4] "Greater Heights (SN 15)"            
+```
+
+There is an R project that has zipcodes, but it looked a bit old and it 
+wasn't clear that it was maintained, so I opted to roll my own. The local
+Houston-Galveston Area Council has GIS datasets for free, including a
+zipcode file from 2010. I will ding them for not having clear documentation 
+on the datasets. It would be nice to know how they were generated. Being
+gdb files, easy to read in. However, they need to be converted to lat/long,
+as they are in X-Y.
+
+
+```{r add zipcodes}
+#  http://www.h-gac.com/rds/gis-data/gis-datasets.aspx
+fgdb <- "/home/ajackson/Dropbox/CrimeStats/USCB_Zip_Codes_2010.gdb"
+
+# Read the feature class
+zipdata2 <- st_read(fgdb)
+# Reading layer `USCB_Zip_Codes_2010' from data source `/home/ajackson/CrimeStats/USCB_Zip_Codes_2010.gdb' using driver `OpenFileGDB'
+# Simple feature collection with 290 features and 3 fields
+# geometry type:  MULTIPOLYGON
+# dimension:      XY
+# bbox:           xmin: 2643770 ymin: 13353620 xmax: 3471265 ymax: 14328090
+# epsg (SRID):    NA
+# proj4string:    +proj=lcc +lat_1=28.38333333333333 +lat_2=30.28333333333333 +lat_0=27.83333333333333 +lon_0=-99 +x_0=600000 +y_0=3999999.999999999 +datum=NAD83 +units=us-ft +no_defs
+
+# View the feature class
+plot(zipdata2)
+
+#   unproject the zipcode data to lat longs on proper datum
+
+ziplatlong2 <- st_transform(zipdata2, googlecrs)
+summary(ziplatlong)
+
+#   find points in polygons
+#   since zipcodes don't overlap, let's just grab the array index
+#   instead of creating a huge matrix
+a <- st_intersects(AddPts, ziplatlong2, sparse = TRUE)
+a <- st_intersects(AddressPoints, ziplatlong2, sparse = TRUE)
+
+#   Append the ZIP field to the AddressPoints data frame
+AddressPoints$Zip_Code <- ziplatlong2$Zip_Code[unlist(a)]
+
+```
+Went to the source, the census bureau for these.
+I found the website terribly confusing - I can never seem to find the same
+thing twice. For block files (for the whole state) I ended up at
+https://www.census.gov/cgi-bin/geo/shapefiles/index.php?year=2010&layergroup=Blocks
+Also grabbed the 2010 population by block file from 
+ftp://ftp2.census.gov/geo/tiger/TIGER2010BLKPOPHU/
+
+Note that Block numbers are only unique *within a tract*, so both numbers 
+must be grabbed. Similarly, if using more than one county, the county FIPS is
+necessary to maintain uniqueness.
+
+ 
+```{r add census blocks}
+# Load shapefile
+
+Census <- read_sf('/home/ajackson/Dropbox/CrimeStats/CensusBlocks/tl_2010_48_tabblock10.shp')
+summary(Census)
+plot(Census,axes=TRUE)
+
+#   data is epsg 4269 which is NAD83, so convert to WGS84 and google epsg
+Census <- st_transform(Census, 4326)
+
+#   trim to only cover Houston area to reduce size. Select Harris and 
+#   nearby counties. Note that the State county numbers differ from
+#   the FIPS code used by the census.
+counties <- c("039","071","157","167","201","291","321","473")
+CensusHou <- Census %>% filter(COUNTYFP10 %in% counties)
+#   find points in polygons
+a <- st_intersects(AddressPoints, CensusHou, sparse = TRUE)
+
+badpoints <- grep(" ",a) # bad points where apparently census blocks overlap
+d <- CensusHou %>% select(NAME10)
+#   Look at the bad pairs. Yep, they all touch.
+plot(d[unlist(a[badpoints[7]]),], axes=TRUE, key.pos=NULL)
+
+#   Take the first member of the pair. The overlap is tiny, so it doesn't matter
+for (i in 1:length(badpoints)) {
+  a[[badpoints[i]]] <- a[[badpoints[i]]][1]
+}
+# Find and fix points where there was a miss, show up as integer(0)
+idx <- !(sapply(a, length)) # where are they?
+a[idx] <- NA
+#   add county, census tract and block number to data
+AddressPoints$CountyFIP <- CensusHou$COUNTYFP10[unlist(a)]
+AddressPoints$CensusTract <- CensusHou$TRACTCE10[unlist(a)]
+AddressPoints$CensusBlock <- CensusHou$BLOCKCE10[unlist(a)]
+
+```
+
+Beat and District polygons from the city of Houston GIS portal,
+https://cohgis-mycity.opendata.arcgis.com/datasets/houston-police-beats
+Amazingly, the data is in lat/long using epsg 4326, so no transformations
+are necessary to make it compatible with google map products.
+
+
+```{r read in beat polygons}
+Beats <- read_sf('/home/ajackson/Dropbox/CrimeStats/BeatPolys/Houston_Police_Beats.shp')
+summary(Beats)
+temp <- Beats %>% select(District)
+plot(temp,axes=TRUE)
+
+```
+
