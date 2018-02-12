@@ -11,6 +11,9 @@ For HPD data:
         District1aCleanData.rds
         District2aCleanData.rds
 
+    PremiseTable.rds -  translation table to go from large number of
+                        premise names to a small number
+
     Geocode district data and store the Address/Lat/Long data in a file
         Geocoding.Rmd  - code
         GeoTable.rds   - data
@@ -20,7 +23,9 @@ For HPD data:
     records from GeoTable that have incomplete coordinates, and save the
     result back to GeoTable.
 
-        AddPolygons.Rmd
+        AddPolygons.Rmd - code
+        AddPolygonsDocumentation.Rmd - code with small dataset and more explanation
+        
   
         Neighborhoods
             Neighborhoods.kml - output from Wikimapia
