@@ -85,7 +85,7 @@ getfields <- function(x){
               Latitude=as.numeric(x$results[[1]]$geometry$location$lat),
               Longitude=as.numeric(x$results[[1]]$geometry$location$lng),
               stringsAsFactors = FALSE)
-              } else{
+              } else{ # retrieval failed for some reason
                 data.frame(types=NA,Latitude=NA,Longitude=NA)
                 }
 }
