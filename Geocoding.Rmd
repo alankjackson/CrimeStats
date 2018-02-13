@@ -132,6 +132,7 @@ latlongs <- map_df(AllLatLong, getfields) # extract desired fields
 workingset[mask,]$lon1[2401:4800] = latlongs$Longitude
 workingset[mask,]$lat1[2401:4800] = latlongs$Latitude
 workingset[mask,]$type[2401:4800] = latlongs$types
+workingset[mask,]$StreetName[2401:4800] = latlongs$StreetName
 
 ```
 
