@@ -12,6 +12,8 @@ library("lubridate") # handle dates
 
 PremiseTable = readRDS("/home/ajackson/mirrors/ajackson/crime/data/PremiseTable.rds")
 
+plotpath <- "/home/ajackson/Dropbox/CrimeStats/District_material/"
+
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
@@ -284,7 +286,6 @@ df2$Beat <- str_replace(df2$Beat,"g$","")
 
 ```
 
-*****  stopped here  *****
 
 ```{r Check Premise data}
 #################################
@@ -299,6 +300,8 @@ per_month = df2 %>%
 ggplot(data=per_month, mapping=aes(x=YrMon, y=count)) +
   geom_point() +
   labs(title="Blank Premise fields per month", y="Total blanks per month", x="Averaged Monthly") 
+
+ggsave(paste("District",district,"_","BlankPremiseFieldDistribution.jpeg", sep=""), device="jpeg", path = paste(plotpath,"District",district,"_material/",sep=""))
 
 #   make more manageable by changing NULL to UNK
 df2$Premise[is.na(df2$Premise)] <- "Other or Unknown"
@@ -359,6 +362,8 @@ df2$Premise <- str_replace_all(df2$Premise, "cord,Stat","cord or Stat")
 df2$Premise <- str_replace_all(df2$Premise, "care,Chil","care or Chil")
 df2$Premise <- str_replace_all(df2$Premise, "tory,Manu","tory or Manu")
 df2$Premise <- str_replace_all(df2$Premise, "Vacant School or College or University","Vacant School or College")
+df2$Premise <- str_replace_all(df2$Premise, ",Pet$",",Pet Stores")
+df2$Premise <- str_replace_all(df2$Premise, "ium,Spor","ium or Spor")
 
 
 sort(unique(df2$Premise))
@@ -372,6 +377,7 @@ reorder_size <- function(x) {
   factor(x, levels = names(sort(table(x))))
 }
 ggplot(df2, aes(reorder_size(df2$Premise))) + geom_bar() + coord_flip()
+ggsave(paste("District",district,"_","PremiseFrequency.jpeg", sep=""), device="jpeg", path = paste(plotpath,"District",district,"_material/",sep=""))
 
 #   write out the cleaned premises so that a translation table may be created
 #b <- sort(unique(df2$Premise))
@@ -379,8 +385,11 @@ ggplot(df2, aes(reorder_size(df2$Premise))) + geom_bar() + coord_flip()
 ###########   editor magic happens
 #   Read in translation table Premise to ShortPremise and add to df2
 ptab <- read_csv("~/mirrors/ajackson/crime/data/ptable.csv")
-df2 <- left_join(df2,ptab,by="Premise")
-sort(table(df2$ShortPremise),decreasing=TRUE)
+a <- left_join(df2,ptab,by="Premise")
+sum(is.na(a$ShortPremise))
+sort(table(a$ShortPremise),decreasing=TRUE)
+df2 <- a
+rm(a)
 
 
 ```
@@ -394,6 +403,8 @@ sort(unique(df2$Block_Range))
 df2$Block_Range <- str_replace_all(df2$Block_Range, "1\\.1103e\\+006-1\\.1104e\\+006", "")
 df2$Block_Range <- sub("^$","UNK", df2$Block_Range)
 ```
+
+*****  stopped here  *****
 
 ```{r Check Street}
 #################################
