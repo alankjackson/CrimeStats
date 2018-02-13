@@ -76,6 +76,7 @@ Finally save the new GeoTable.
 latlongs <- data.frame(types=character(),
                  Latitude=numeric(), 
                  Longitude=numeric(), 
+                 StreetName=character(),
                  stringsAsFactors=FALSE) 
 
 #   Function for pulling fields out of nested lists returned by geocode
@@ -84,10 +85,11 @@ getfields <- function(x){
               types=x$results[[1]]$types[1],
               Latitude=as.numeric(x$results[[1]]$geometry$location$lat),
               Longitude=as.numeric(x$results[[1]]$geometry$location$lng),
+              StreetName=x$results[[1]]$formatted_address,
               stringsAsFactors = FALSE)
-              } else{ # retrieval failed for some reason
-                data.frame(types=NA,Latitude=NA,Longitude=NA)
-                }
+              } else{
+                data.frame(types=NA,Latitude=NA,Longitude=NA, StreetName=NA)
+              }
 }
 
 # run geocode for each record up to the daily limit, and then average the lat/long
@@ -107,15 +109,36 @@ workingset$lat1 <- NA
 workingset$lon2 <- NA
 workingset$lat2 <- NA
 workingset$type <- NA
+workingset$StreetName <- NA
+
 workingset[mask,]$lon1[1:2400] = latlongs$Longitude
 workingset[mask,]$lat1[1:2400] = latlongs$Latitude
 workingset[mask,]$type[1:2400] = latlongs$types
+workingset[mask,]$StreetName[1:2400] = latlongs$StreetName
 
-##### Run on 12th after 9PM 
-geocode(paste(workingset[mask,]$Add1[2401], workingset[mask,]$Street[2401]))
-latlong2 = geocode(paste(workingset[mask,]$Add1[2401:4549], workingset[mask,]$Street[2401:4549])) 
-workingset[mask,]$lon1[2401:4549] = latlong2$lon
-workingset[mask,]$lat1[2401:4549] = latlong2$lat
+```
+
+Second pass to catch more lat longs
+
+```{r get more lat longs from google}
+
+##### Run on 13th after 9PM 
+Addresses <- paste(workingset[mask,]$Add1[2401:4800], workingset[mask,]$Street[2401:4800])
+
+AllLatLong <- geocode(Addresses, output="all") # geocode 2400 addresses
+
+latlongs <- map_df(AllLatLong, getfields) # extract desired fields
+
+workingset[mask,]$lon1[2401:4800] = latlongs$Longitude
+workingset[mask,]$lat1[2401:4800] = latlongs$Latitude
+workingset[mask,]$type[2401:4800] = latlongs$types
+
+```
+
+Third pass
+
+```{r get more lat longs from gogole}
+
 ##### Run on 27th after 8:30PM
 latlong3 = geocode(paste(workingset[mask,]$Add2[1:2400], workingset[mask,]$Street[1:2400])) 
 workingset[mask,]$lon2[1:2400] = latlong3$lon
