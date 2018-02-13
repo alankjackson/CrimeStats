@@ -61,8 +61,7 @@ df2 <- tibble(Date=character(),
               Street=character(),
               Type=character(),
               Suffix=character(),
-              Num_Off=integer(),
-              stringsAsFactors=FALSE)
+              Num_Off=integer() )
 
 ####################################
 # now let's spin through the files
@@ -136,8 +135,6 @@ if ((yr=="09"&&mon %in% c("jan","feb","mar","apr","may","jun","jul","sep","nov")
 
 ```{r read in August 2017 by beat}
 
-beats <- c("1a10","1a20","1a30","1a40","1a50")
-
 for (beat in beats)
     {
     
@@ -201,7 +198,7 @@ df2$Date <- mdy(df2$Date)
 df2 <- df2 %>%
   filter(between(Date,mdy("1/1/2009"),mdy("1/1/2018")))
 Total_Incidents_per_day <- table(df2$Date)
-hist(Total_Incidents_per_day, breaks=20)
+hist(Total_Incidents_per_day, breaks=40)
 ```
 
 
@@ -235,6 +232,9 @@ df2$Offense_Type <-  str_replace(df2$Offense_Type,"Forcible ","") # get rid of F
 df2$Offense_Type <-  str_replace(df2$Offense_Type,"AutoTheft","Auto Theft") # add space
 df2$Offense_Type <-  str_replace(df2$Offense_Type," of a Motor Vehicle","") # just burglary
 df2$Offense_Type <-  str_replace(df2$Offense_Type," & Nonnegligent Manslaughter","") # just murder
+
+#   One record has an incident type of "1". We'll just delete that record.
+df2 <- df2[!df2$Offense_Type=="1",]
 #   Bar chart of various incidents
 ggplot(data=df2) +
   geom_bar(aes(x=Offense_Type)) +
@@ -279,8 +279,12 @@ df2 <- df2 %>%
 unique(df2$Beat)
 # remove non-alphanumerics
 df2$Beat <- str_replace_all(df2$Beat,"\\W","")
+# fix one anomalous record
+df2$Beat <- str_replace(df2$Beat,"g$","")
 
 ```
+
+*****  stopped here  *****
 
 ```{r Check Premise data}
 #################################
