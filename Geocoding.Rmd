@@ -136,7 +136,24 @@ workingset[mask,]$StreetName[2401:4800] = latlongs$StreetName
 
 ```
 
-Third pass
+Third pass on Add1
+
+```{r get more lat longs from google}
+##### Run on 14th after 9:30PM 
+Addresses <- paste(workingset[mask,]$Add1[4801:4981], workingset[mask,]$Street[4801:4981])
+
+AllLatLong <- geocode(Addresses, output="all") # geocode 2400 addresses
+
+latlongs <- map_df(AllLatLong, getfields) # extract desired fields
+
+workingset[mask,]$lon1[4801:4981] = latlongs$Longitude
+workingset[mask,]$lat1[4801:4981] = latlongs$Latitude
+workingset[mask,]$type[4801:4981] = latlongs$types
+workingset[mask,]$StreetName[4801:4981] = latlongs$StreetName
+```
+
+
+First pass on Addr2
 
 ```{r get more lat longs from gogole}
 
