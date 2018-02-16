@@ -626,9 +626,10 @@ df2$Street <- str_replace(df2$Street,"^TAUB ","BEN TAUB ")
 maskHiway <- grepl("^IH |^FM |^TX |^I |HWY|^US |^SPUR |^COUNTY |^LAKES |^SH ",df2$Street)
 df2$Street[!maskHiway] <- str_replace(df2$Street[!maskHiway],"^SOUTH ","S ")
 
-##############   stopped here
 #     Work on Direction indicators  and the Loop (N,S,E,W). LOOP wants spelled out
 #     and allow for North Fwy, South Fwy, and East Fwy
+df2$Street <- str_replace(df2$Street," SVC$","")
+
 df2$Street <- str_replace(df2$Street," LP "," LOOP ")
 df2$Street <- str_replace(df2$Street," LP$"," LOOP")
 maskloop <- grepl(" LOOP", df2$Street)
@@ -649,14 +650,15 @@ df2$Street[maskloop] <- str_replace(df2$Street[maskloop], "^W ","WEST ")
 df2$Street[maskloop] <- str_replace(df2$Street[maskloop], "^N ","NORTH ")
 df2$Street[maskloop] <- str_replace(df2$Street[maskloop], "^S ","SOUTH ")
 
-#   settle on Katy Fwy, Gulf Fwy, North, East, South FWY's, and LOOP instead of 610
+#   settle on Katy Fwy, Gulf Fwy, North, East, South FWY's, and LOOP instead of 610, Eastex
+df2$Street <- str_replace(df2$Street,"^US 59$","HWY 59") 
 df2$Street <- str_replace(df2$Street,"IH 45 FWY","IH 45") # remove FWY
 df2$Street <- str_replace(df2$Street,"IH 10 FWY","IH 10") # remove FWY
 df2$Street <- str_replace(df2$Street,"(IH \\d+)\\s.*","\\1") # remove anything after number
-###   for this district only does this work
-df2$Street <- str_replace(df2$Street,"IH 10","KATY FWY") # Katy Fwy
-df2$Street <- str_replace(df2$Street,"IH 45","NORTH FWY") # North Fwy
-df2$Street <- str_replace(df2$Street,"IH 610","NORTH LOOP") # North Loop Fwy
+df2$Street <- str_replace(df2$Street,"IH 610","LOOP") # Loop Fwy
+df2$Street <- str_replace(df2$Street,"LOOP E","LOOP") # Loop Fwy
+df2$Street <- str_replace(df2$Street,"LOOP EAST","LOOP") # Loop Fwy
+df2$Street <- str_replace(df2$Street,"^E LOOP","EAST LOOP") # Loop Fwy
 #   use suffix to place loop as either NORTH or WEST
 masksuffix <- grepl("N", df2$Suffix)
 maskloop <- grepl("^LOOP$", df2$Street)
@@ -664,42 +666,82 @@ df2$Street[masksuffix&maskloop] <- "NORTH LOOP"
 masksuffix <- grepl("W", df2$Suffix)
 maskloop <- grepl("^LOOP$", df2$Street)
 df2$Street[masksuffix&maskloop] <- "WEST LOOP"
+masksuffix <- grepl("S", df2$Suffix)
+maskloop <- grepl("^LOOP$", df2$Street)
+df2$Street[masksuffix&maskloop] <- "SOUTH LOOP"
+masksuffix <- grepl("E", df2$Suffix)
+maskloop <- grepl("^LOOP$", df2$Street)
+df2$Street[masksuffix&maskloop] <- "EAST LOOP"
 
-df2$Street <- str_replace(df2$Street,"^SW FWY$","SOUTHWEST FWY")  
-df2$Street <- str_replace(df2$Street,"^S NORTH FWY$","NORTH FWY")  
+#   various freeways
+
+#     288
+df2$Street <- str_replace(df2$Street,"^S FWY$","SOUTH FWY")  
+df2$Street <- str_replace(df2$Street,"^SH 288\\s?\\w*","SOUTH FWY") # 290
+#     hwy 59/69
+df2$Street <- str_replace(df2$Street,"^HWY 59$","SOUTHWEST FWY")  
+#     290
 df2$Street <- str_replace(df2$Street,"^NORTHWEST$","NORTHWEST FWY") # 290
-df2$Street <- str_replace(df2$Street,"^S US HWY 59$","SOUTHWEST FWY") # 59
-df2$Street <- str_replace(df2$Street,"^HWY 6 N$","HWY 6")
-df2$Street <- str_replace(df2$Street,"^SH 6$","HWY 6")
+df2$Street <- str_replace(df2$Street,"^US 290 FWY$","NORTHWEST FWY") # 290
 
+#     Hwy 6
+df2$Street <- str_replace(df2$Street,"^HWY 6 SOUTH$","HWY 6")
+mask <- grepl("S",df2$Suffix)
+df2$Street[mask] <- str_replace(df2$Street[mask],"^HWY 6$","S HWY 6")
+
+#   
 mask <- grepl("FWY",df2$Type)
 maskout <- grepl("FWY",df2$Street)
 df2$Street[mask&!maskout] <- paste(df2$Street[mask&!maskout],"FWY", sep=" ")
 df2$Street <- str_replace(df2$Street,"^US 59 FWY$","SOUTHWEST FWY") # 59
 df2$Street <- str_replace(df2$Street,"^US 59$","SOUTHWEST FWY") # 59
 df2$Street <- str_replace(df2$Street,"^SW FWY$","SOUTHWEST FWY") # 59
-df2$Street <- str_replace(df2$Street,"^NORTH LOOP FWY$","NORTH LOOP") 
+df2$Street <- str_replace(df2$Street,"^SW$","SOUTHWEST FWY") # 59
+df2$Street <- str_replace(df2$Street,"^IH 45$","GULF FWY") 
+df2$Street <- str_replace(df2$Street,"^GULF$","GULF FWY") 
+df2$Street <- str_replace(df2$Street,"^KATY$","KATY FWY") 
+df2$Street <- str_replace(df2$Street,"^NORTH$","NORTH FWY") 
+df2$Street <- str_replace(df2$Street,"^SOUTH$","SOUTH FWY") 
+df2$Street <- str_replace(df2$Street,"^SOUTHWEST$","SOUTHWEST FWY") 
 
 #############   done with freeways
+keepdf2 <- df2
 
-####################  temp
-tail(head(sort(unique(df2$Street)),600),100)
+####################  One more check
+tail(head(sort(unique(df2$Street)),100),100)
 
+df2$Street <- str_replace(df2$Street,"CCHENEVERTL","CHENEVERT") 
+df2$Street <- str_replace(df2$Street,"CHENEVERT STD","CHENEVERT") 
+df2$Street <- str_replace(df2$Street,"CENTERALCREST","CENTRALCREST") 
+df2$Street <- str_replace(df2$Street,"GULF FRY","GULF FWY") 
+df2$Street <- str_replace(df2$Street,"I-10 EAST","EAST FWY") 
+df2$Street <- str_replace(df2$Street,"IH 45 FWY","GULF FWY") 
+df2$Street <- str_replace(df2$Street,"S IH 45","GULF FWY") 
+df2$Street <- str_replace(df2$Street,"^SAINT","ST") 
+df2$Street <- str_replace(df2$Street,"^ST$","SAINT") 
+df2$Street <- str_replace(df2$Street,"^TAUB$","BEN TAUB") 
+
+##############   stopped here
 ########   Deal with Suffixes (N,S,E,W)
 mask <- grepl("N",df2$Suffix)
 maskout <- grepl("KATY|FWY|LOOP|EAST|HWY|^N ", df2$Street)
+sort(unique(df2$Street[mask&!maskout]))
+
 df2$Street[mask&!maskout] <- paste("N",df2$Street[mask&!maskout],sep=" ")
 
 mask <- grepl("S",df2$Suffix)
 maskout <- grepl("KATY|FWY|LOOP|EAST|HWY|^S ", df2$Street)
+sort(unique(df2$Street[mask&!maskout]))
 df2$Street[mask&!maskout] <- paste("S",df2$Street[mask&!maskout],sep=" ")
 
 mask <- grepl("E",df2$Suffix)
 maskout <- grepl("KATY|FWY|LOOP|EAST|NORTH|HWY|^E ", df2$Street)
+sort(unique(df2$Street[mask&!maskout]))
 df2$Street[mask&!maskout] <- paste("E",df2$Street[mask&!maskout],sep=" ")
 
 mask <- grepl("W",df2$Suffix)
 maskout <- grepl("KATY|FWY|LOOP|EAST|NORTH|^W ", df2$Street)
+sort(unique(df2$Street[mask&!maskout]))
 df2$Street[mask&!maskout] <- paste("W",df2$Street[mask&!maskout],sep=" ")
 
 df2$Street[grepl("^[NSEW] NA$",df2$Street)] <- NA
@@ -722,6 +764,6 @@ df2$Type <- str_replace_all(df2$Type,"^CIR$","CIRCLE")
 # Save the results
 #################################
 
-saveRDS(df2, file="~/Dropbox/CrimeStats/District1aCleanData.rds")
+saveRDS(df2, file=paste("~/Dropbox/CrimeStats/District",district,"CleanData.rds",sep=""))
 ```
 
