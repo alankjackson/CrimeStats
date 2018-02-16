@@ -155,7 +155,7 @@ workingset$StreetName[4801:5240] = latlongs$StreetName
 
 First pass on Addr2
 
-```{r get more lat longs from gogole}
+```{r get more lat longs from google}
 
 ##### Run on 15th after 9:30PM
 geocodeQueryCheck()
@@ -171,27 +171,45 @@ workingset$lat2[1:2400] = latlongs$Latitude
 workingset$type2[1:2400] = latlongs$types
 workingset$StreetName2[1:2400] = latlongs$StreetName
 
+```
+
+Second pass on Add2
+
+```{r get more lat longs from google}
+##### Run on 16th after 9PM
+geocodeQueryCheck()
+
+Addresses <- paste(workingset$Add2[2401:4800], workingset$Street[2401:4800])
+
+AllLatLong <- geocode(Addresses, output="all") # geocode 2400 addresses
+
+latlongs <- map_df(AllLatLong, getfields) # extract desired fields
+
+workingset$lon2[2401:4800] = latlongs$Longitude
+workingset$lat2[2401:4800] = latlongs$Latitude
+workingset$type2[2401:4800] = latlongs$types
+workingset$StreetName2[2401:4800] = latlongs$StreetName
+
+```
+
+Third pass on Add2
+
+```{r get more lat longs from google}
 ##### Run on 28th after 9PM
-latlong4 = geocode(paste(workingset[mask,]$Add2[2401:4549], workingset[mask,]$Street[2401:4549])) 
-workingset[mask,]$lon2[2401:4549] = latlong4$lon
-workingset[mask,]$lat2[2401:4549] = latlong4$lat
+#   Look for any coordinates left to do
+geomask <- is.na(workingset$lon2) & is.na(workingset$Longitude)
+
+
+```
+
+
+
+```{r get more lat longs from google}
 ##### Cleanup the ones that got skipped
 mask1 <- is.na(workingset$lon1)&is.na(workingset$avglon)
 mask2 <- is.na(workingset$lon2)&is.na(workingset$avglon)
 
 ######   start here on Monday after 9
-latlong1 = geocode(paste(workingset[mask1,]$Add1, workingset[mask1,]$Street))
-workingset[mask1,]$lon1 = latlong1$lon
-workingset[mask1,]$lat1 = latlong1$lat
-
-workingset$Address <- str_replace(workingset$Address,"MCEWEN","MC EWEN")
-workingset$Street <- str_replace(workingset$Street,"MCEWEN","MC EWEN")
-workingset$Address <- str_replace(workingset$Address,"WESCOTT FRONTAGE", "WESCOTT")
-workingset$Street <- str_replace(workingset$Street,"WESCOTT FRONTAGE", "WESCOTT")
-
-latlong2 = geocode(paste(workingset[mask2,]$Add2, workingset[mask2,]$Street))
-workingset[mask2,]$lon2 = latlong2$lon
-workingset[mask2,]$lat2 = latlong2$lat
 
 ###   some lat/longs are bogus. Find them and redo
 #   If the distance between latlong1 and 2 > 5x the median, redo
