@@ -95,9 +95,7 @@ getfields <- function(x){
 # run geocode for each record up to the daily limit, and then average the lat/long
 # values from each end of the block to get a true block center value.
 
-mask <- !complete.cases(workingset) # only work with good data
-
-Addresses <- paste(workingset[mask,]$Add1[1:2400], workingset[mask,]$Street[1:2400])
+Addresses <- paste(workingset$Add1[1:2400], workingset$Street[1:2400])
 AllLatLong <- geocode(Addresses, output="all") # geocode 2400 addresses
 
 latlongs <- map_df(AllLatLong, getfields) # extract desired fields
@@ -110,11 +108,13 @@ workingset$lon2 <- NA
 workingset$lat2 <- NA
 workingset$type <- NA
 workingset$StreetName <- NA
+workingset$type2 <- NA
+workingset$StreetName2 <- NA
 
-workingset[mask,]$lon1[1:2400] = latlongs$Longitude
-workingset[mask,]$lat1[1:2400] = latlongs$Latitude
-workingset[mask,]$type[1:2400] = latlongs$types
-workingset[mask,]$StreetName[1:2400] = latlongs$StreetName
+workingset$lon1[1:2400] = latlongs$Longitude
+workingset$lat1[1:2400] = latlongs$Latitude
+workingset$type[1:2400] = latlongs$types
+workingset$StreetName[1:2400] = latlongs$StreetName
 
 ```
 
@@ -123,16 +123,16 @@ Second pass to catch more lat longs
 ```{r get more lat longs from google}
 
 ##### Run on 13th after 9PM 
-Addresses <- paste(workingset[mask,]$Add1[2401:4800], workingset[mask,]$Street[2401:4800])
+Addresses <- paste(workingset$Add1[2401:4800], workingset$Street[2401:4800])
 
 AllLatLong <- geocode(Addresses, output="all") # geocode 2400 addresses
 
 latlongs <- map_df(AllLatLong, getfields) # extract desired fields
 
-workingset[mask,]$lon1[2401:4800] = latlongs$Longitude
-workingset[mask,]$lat1[2401:4800] = latlongs$Latitude
-workingset[mask,]$type[2401:4800] = latlongs$types
-workingset[mask,]$StreetName[2401:4800] = latlongs$StreetName
+workingset$lon1[2401:4800] = latlongs$Longitude
+workingset$lat1[2401:4800] = latlongs$Latitude
+workingset$type[2401:4800] = latlongs$types
+workingset$StreetName[2401:4800] = latlongs$StreetName
 
 ```
 
@@ -140,16 +140,16 @@ Third pass on Add1
 
 ```{r get more lat longs from google}
 ##### Run on 14th after 9:30PM 
-Addresses <- paste(workingset[mask,]$Add1[4801:4981], workingset[mask,]$Street[4801:4981])
+Addresses <- paste(workingset$Add1[4801:5240], workingset$Street[4801:5240])
 
 AllLatLong <- geocode(Addresses, output="all") # geocode 2400 addresses
 
 latlongs <- map_df(AllLatLong, getfields) # extract desired fields
 
-workingset[mask,]$lon1[4801:4981] = latlongs$Longitude
-workingset[mask,]$lat1[4801:4981] = latlongs$Latitude
-workingset[mask,]$type[4801:4981] = latlongs$types
-workingset[mask,]$StreetName[4801:4981] = latlongs$StreetName
+workingset$lon1[4801:5240] = latlongs$Longitude
+workingset$lat1[4801:5240] = latlongs$Latitude
+workingset$type[4801:5240] = latlongs$types
+workingset$StreetName[4801:5240] = latlongs$StreetName
 ```
 
 
@@ -157,10 +157,20 @@ First pass on Addr2
 
 ```{r get more lat longs from gogole}
 
-##### Run on 27th after 8:30PM
-latlong3 = geocode(paste(workingset[mask,]$Add2[1:2400], workingset[mask,]$Street[1:2400])) 
-workingset[mask,]$lon2[1:2400] = latlong3$lon
-workingset[mask,]$lat2[1:2400] = latlong3$lat
+##### Run on 15th after 9:30PM
+geocodeQueryCheck()
+
+Addresses <- paste(workingset$Add2[1:2400], workingset$Street[1:2400])
+
+AllLatLong <- geocode(Addresses, output="all") # geocode 2400 addresses
+
+latlongs <- map_df(AllLatLong, getfields) # extract desired fields
+
+workingset$lon2[1:2400] = latlongs$Longitude
+workingset$lat2[1:2400] = latlongs$Latitude
+workingset$type2[1:2400] = latlongs$types
+workingset$StreetName2[1:2400] = latlongs$StreetName
+
 ##### Run on 28th after 9PM
 latlong4 = geocode(paste(workingset[mask,]$Add2[2401:4549], workingset[mask,]$Street[2401:4549])) 
 workingset[mask,]$lon2[2401:4549] = latlong4$lon
