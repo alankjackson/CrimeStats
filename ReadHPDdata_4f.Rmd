@@ -492,159 +492,204 @@ df2$Block_Range <- sub("^$","UNK", df2$Block_Range)
 # Street
 #################################
 
-##   test with df2[grepl("TH\\s1$",df2$Street),]
+#  EASTEX FWY, GULF FWY, KATY FWY, NORTH FWY, NORTHWEST FWY,
+#  SOUTHWEST FWY, SOUTH FWY, EAST FWY, N SAM HOUSTON PKWY,
+#  HWY 6, NSEW SAM HOUSTON PKWY, CROSBY FWY, GRAND PKWY,
+#  PASADENA FWY
 
 #####  Remove extra blanks, periods
-# get rid of periods
-df2$Street <- str_replace_all(df2$Street,"\\.","")
-# get rid of doubled spaces, leading and trailing spaces
-df2$Street <- str_replace_all(df2$Street,"\\s+"," ")
-df2$Street <- str_replace_all(df2$Street,"^\\s+","")
-df2$Street <- str_replace_all(df2$Street,"\\s+$","")
-# get rid of apartment numbers and such
-df2$Street <- str_replace_all(df2$Street," APT\\s*#*\\d*$","")
-df2$Street <- str_replace_all(df2$Street," APT\\s*#*[A-Z0-9]*$","")
-df2$Street <- str_replace_all(df2$Street," APARTMENT\\s*#*[A-Z0-9]*$","")
-df2$Street <- str_replace_all(df2$Street," UNIT \\d*","")
-df2$Street <- str_replace_all(df2$Street," NO\\s*\\d*","")
-df2$Street <- str_replace_all(df2$Street," SUITE\\s*#*[A-Z0-9]*$","")
-df2$Street <- str_replace_all(df2$Street,"^#\\s?[A-Z]? ","")
-df2$Street <- str_replace_all(df2$Street,"#\\s?[A-Z]?$","")
-df2$Street <- str_replace_all(df2$Street,"#\\s?[0-9]*$","")
-df2$Street <- str_replace_all(df2$Street," / [\\w\\s]*$","") # after / delete
-df2$Street <- str_replace_all(df2$Street," IB/[\\w\\s]*$","") # after / delete
-df2$Street <- str_replace_all(df2$Street," OB/[\\w\\s]*$","") # after / delete
-df2$Street <- str_replace_all(df2$Street," [IO]B$","") 
-df2$Street <- str_replace_all(df2$Street," OBIB","") 
-df2$Street <- str_replace_all(df2$Street," [IO]B","") 
-df2$Street <- str_replace(df2$Street," STREET$"," ST")
-df2$Street <- str_replace(df2$Street," STREET","")
-df2$Street <- str_replace(df2$Street," STR$"," ST")
-#   "7TH 1" to "7TH" and similar.
-df2$Street <- str_replace_all(df2$Street,"TH\\s1$","TH")
-#   "1" and "2" street becomes NA, since it makes no sense.
-df2$Street[grepl("^2$",df2$Street)] <- NA
-df2$Street[grepl("^1$",df2$Street)] <- NA
-#   1-2 becomes 1/2
-df2$Street <- str_replace_all(df2$Street,"1-2$","1/2")
-df2$Street <- str_replace_all(df2$Street," STE$"," ST")
+dictionary <- c(
+                "\\.",      "",  # remove periods
+                "\\s{2,}",  " ", # remove extra spaces
+                "^\\s+",    "",  # remove leading spaces
+                "\\s+$",    "",  # remove trailing spaces
+                "\n\\s+",   " ",  # remove carriage returns
+                " APT\\s*#*\\d*$", "", # remove Apartment numbers
+                " APT\\s*#*[A-Z0-9]*$", "", # remove Apartment numbers
+                " APARTMENT\\s*#*[A-Z0-9]*$", "", # remove Apartment numbers
+                " UNIT \\d*",  "", #  remove Unit numbers
+                " NO\\s*\\d*", "", #  more Unit numbers 
+                " SUITE\\s*#*[A-Z0-9]*$", ""  #  SUITE number
+)
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Street", dict)
+#   Apply
+df2 <- applyregex(df2, "Street", dict)
+
+tail(head(sort(unique(df2$Street)),100),100)
+
+dictionary <- c(
+                "^#\\s?[A-Z]? ",  "",  #  more address removal
+                "#\\s?[A-Z]?$",   "",  #  more address removal
+                "#\\s?[0-9]*$",   "",  #  more address removal
+                " [IO]B$",        "",
+                " OBIB",          "",
+                " [IO]B",         "",
+                " STREET$",       " ST",
+                " STREET",        "",
+                "/",              " @ ", #  intersections
+                "  ",             " ",   #  remove any double spaces
+                " EXIT$",         ""
+)
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Street", dict)
+#   Apply
+df2 <- applyregex(df2, "Street", dict)
+
+
+#   clean out numbers after road designations, and shorten
+dictionary <- c(
+                "ST \\d+$",     "ST",
+                "DR \\d+$",     "DR",
+                "RD \\d+$",     "RD",
+                "AVE \\d+$",    "AVE",
+                "BLVD \\d+$",   "BLVD",
+                "AVENUE$",      "AVE",
+                "ROAD$",        "RD",
+                "DRIVE$",       "DR",
+                "LANE$",        "LN",
+                " CIR$",        " CIRCLE",
+                " COURT$",      " CT",
+                "\\sSPDWY$",    " SPEEDWAY"
+)
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Street", dict)
+#   Apply
+df2 <- applyregex(df2, "Street", dict)
+
+tail(head(sort(unique(df2$Street)),100),100)
+
+#   null out nonsense records, like PO Box
+dictionary <- c(
+                "P ?O ?BOX\\s?","",
+                "^BOX\\s?\\d*$","",
+                "POB\\s","",
+                "^PO\\s\\d*$","",
+                "\\sBOX\\s\\d*$",""
+)
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Street", dict)
 df2$Street[grepl("P ?O ?BOX\\s?",df2$Street)] <- NA
 df2$Street[grepl("^BOX\\s?\\d*$",df2$Street)] <- NA
 df2$Street[grepl("POB\\s",df2$Street)] <- NA
-df2$Street[grepl("^AVENUE$",df2$Street)] <- NA
-df2$Street[grepl("^GREATRTHERN",df2$Street)] <- NA
-df2$Street[grepl("^PR 7805",df2$Street)] <- NA
-df2$Street[grepl("^PVE RD",df2$Street)] <- NA
-df2$Street[grepl("STATION 70 HOUSTON FIRE DEPARTMENT",df2$Street)] <- NA
-df2$Street[grepl("TO NB 59",df2$Street)] <- NA
-df2$Street[grepl("^UNKN?O?W?N?",df2$Street)] <- NA
-df2$Street[grepl("^$",df2$Street)] <- NA
-df2$Street[grepl("^500$",df2$Street)] <- NA
-df2$Street[grepl("^LN$",df2$Street)] <- NA
+df2$Street[grepl("^PO\\s\\d*$",df2$Street)] <- NA
+df2$Street[grepl("\\sBOX\\s\\d*$",df2$Street)] <- NA
 
-head(sort(unique(df2$Street)),100)
-# one offs
-df2$Street <- str_replace(df2$Street," \\+ 4100 AIRPORT BLVD","")
-df2$Street[grepl("^10812ELL PD$",df2$Street)] <- NA
-df2$Street[grepl("^11603$",df2$Street)] <- NA
-df2$Street <- str_replace(df2$Street,"\\(I/B\\)","")
-df2$Street <- str_replace(df2$Street,"^1/2 ","")
-df2$Street <- str_replace(df2$Street," 1/2$","")
-df2$Street[grepl("^145$",df2$Street)] <- NA
-df2$Street[grepl("^1602 1$",df2$Street)] <- NA
-df2$Street <- str_replace(df2$Street,"^2 ","")
-df2$Street <- str_replace(df2$Street," + 3600 ELGIN","")
-df2$Street <- str_replace(df2$Street,"THOB/","TH/")
-df2$Street <- str_replace(df2$Street,"^A ","")
-df2$Street[grepl("^ADLA$",df2$Street)] <- NA
-df2$Street <- str_replace(df2$Street,"\\+","@")
-df2$Street <- str_replace(df2$Street,"\\/","@")
-df2$Street <- str_replace(df2$Street," AND "," @ ")
-df2$Street <- str_replace(df2$Street," AT "," @ ")
-df2$Street <- str_replace(df2$Street,"(\\w)@","\\1 @")
-df2$Street <- str_replace(df2$Street,"@(\\w)","@ \\1")
-df2$Street <- str_replace(df2$Street," AMERI$"," AMERICAS")
-df2$Street <- str_replace(df2$Street,"^AVE ","AVENUE ")
-df2$Street[grepl("^B$",df2$Street)] <- NA
-df2$Street <- str_replace(df2$Street,"BAMMELRTH HOUSTON","BAMMEL NORTH HOUSTON")
-df2$Street <- str_replace(df2$Street,"BELLARIE","BELLAIRE")
-df2$Street <- str_replace(df2$Street," BOX C","")
-#   Clean out number following street names
-df2$Street <- str_replace(df2$Street,"ST \\d+$","ST")
-df2$Street <- str_replace(df2$Street,"DR \\d+$","DR")
-df2$Street <- str_replace(df2$Street,"AVE \\d+$","AVE")
-df2$Street <- str_replace(df2$Street,"BLVD \\d+$","BLVD")
-df2$Street <- str_replace(df2$Street," BX 4021$","")
-df2$Street <- str_replace(df2$Street,"DETROIT 11","DETROIT")
-df2$Street <- str_replace(df2$Street,"MURWORTH 808","MURWORTH")
-df2$Street <- str_replace(df2$Street,"BELLERIVE 1711","BELLERIVE")
-df2$Street <- str_replace(df2$Street," BLDG 4","")
-df2$Street <- str_replace(df2$Street," ROOM 915","")
-df2$Street <- str_replace(df2$Street," LOT 43","")
-df2$Street <- str_replace(df2$Street,"WESTVIEW 126","WESTVIEW")
-df2$Street <- str_replace(df2$Street,"SOUTHMORE 13","SOUTHMORE")
-df2$Street <- str_replace(df2$Street,"MENARD 5","MENARD")
-df2$Street <- str_replace(df2$Street," STE 103","")
-df2$Street <- str_replace(df2$Street," 1917$","")
-df2$Street <- str_replace(df2$Street," 1711$","")
-df2$Street <- str_replace(df2$Street," 1025$","")
-df2$Street <- str_replace(df2$Street," 1611$","")
-df2$Street <- str_replace(df2$Street," 22$","")
-df2$Street <- str_replace(df2$Street,"COUNYY","COUNTY")
-df2$Street <- str_replace(df2$Street,"^B SAN","SAN")
-df2$Street <- str_replace(df2$Street,"TAP BIKE","TAP RAIL-TRAIL")
-df2$Street <- str_replace(df2$Street,"CROSSVIEW D16","CROSSVIEW")
-df2$Street <- str_replace(df2$Street,"WAY B","WAY")
-df2$Street <- str_replace(df2$Street,"DUNN TOWER EAST","FANNIN")
-df2$Street <- str_replace(df2$Street,"EDGEBROOKOB UTRN","EDGEBROOK")
-df2$Street <- str_replace(df2$Street,"FANNIN PAVILION FOR WOMEN","S MAIN")
-df2$Street <- str_replace(df2$Street,"FANNNIN","FANNIN")
-df2$Street <- str_replace(df2$Street,"FIFTH","5TH")
-df2$Street <- str_replace(df2$Street," RD TRAILER","")
-df2$Street[grepl("^GATES HALL TTU$",df2$Street)] <- NA # Texas Tech Univ???
-df2$Street[grepl("^GATHRIGHT CVA$",df2$Street)] <- NA 
-df2$Street <- str_replace(df2$Street,"GEORGE R BROWN CONVENTION CENTER","AVENIDA DE LAS AMERICAS")
-df2$Street <- str_replace(df2$Street,"HOLCOMBE.*$","HOLCOMBE")
-df2$Street <- str_replace(df2$Street," -$","")
-df2$Street <- str_replace(df2$Street," STB$","")
-df2$Street <- str_replace(df2$Street,"LOUSIANNA","LOUISIANA")
-df2$Street <- str_replace(df2$Street,"MAINE SE","MAIN")
-df2$Street <- str_replace(df2$Street," 3RD FLOOR","")
-df2$Street <- str_replace(df2$Street,"NHUTCHESON","N HUTCHESON")
-df2$Street <- str_replace(df2$Street,"NMACGREGOR","N MACGREGOR")
-df2$Street <- str_replace(df2$Street,"MCGREGOR","MACGREGOR")
-df2$Street <- str_replace(df2$Street," AP$","")
-df2$Street <- str_replace(df2$Street," 17K$","")
-df2$Street <- str_replace(df2$Street,"SH288OB ENT","SH 288")
-df2$Street <- str_replace(df2$Street,"SHNEIDER","SCHNEIDER")
-df2$Street <- str_replace(df2$Street," EXIT","")
-df2$Street <- str_replace(df2$Street,"SSAM","SAM")
-df2$Street <- str_replace(df2$Street,"FREEWAY SMITH","FREEWAY @ SMITH")
-df2$Street <- str_replace(df2$Street,"FREEWAY TRAVIS","FREEWAY @ TRAVIS")
-df2$Street <- str_replace(df2$Street,"JOESPH","JOSEPH")
-df2$Street <- str_replace(df2$Street,"PRWY","PKWY")
-df2$Street <- str_replace(df2$Street,"SWFWY","SW FWY")
-df2$Street <- str_replace(df2$Street,"TIDWLL","TIDWELL")
-df2$Street <- str_replace(df2$Street,"UNIVERSATY","UNIVERSITY")
-df2$Street <- str_replace(df2$Street," INBOUND","")
-df2$Street <- str_replace(df2$Street,"WALABAMA","W ALABAMA")
-df2$Street <- str_replace(df2$Street," ACCESS","")
-df2$Street[grepl("^Y$",df2$Street)] <- NA
+#   Now start tackling the more unique one-offs    
+tail(head(sort(unique(df2$Street)),100),100)
 
-df2$Street <- str_replace(df2$Street,"FRWY","FWY")
-df2$Street <- str_replace(df2$Street,"^NORTH SAN","N SAN")
-df2$Street <- str_replace(df2$Street,"FREEWAY\\s*\\w*$","FWY")
-df2$Street <- str_replace(df2$Street,"FWY\\s*[NSEW]$","FWY")
-df2$Street <- str_replace(df2$Street,"PKWY\\s*[NSEW]$","PKWY")
-df2$Street <- str_replace(df2$Street,"SAMHOUPKWY","SAM HOUSTON PKWY")
-df2$Street <- str_replace(df2$Street," ENTR","")
-df2$Street <- str_replace(df2$Street,"JOSEPH PARKWAY","JOSEPH PKWY")
-df2$Street <- str_replace(df2$Street,"TOWNPARK","TOWN PARK")
-df2$Street <- str_replace(df2$Street,"^WEST ","W ")
-df2$Street <- str_replace(df2$Street,"^W OAKS","WEST OAKS")
-df2$Street <- str_replace(df2$Street," ROAD$"," RD")
-df2$Street <- str_replace(df2$Street,"3300 SCOTT @ 3600 ELGIN","SCOTT @ ELGIN")
-df2$Street <- str_replace(df2$Street,"2600 DUNLAVY","DUNLAVY")
+dictionary <- c(
+  "1729 \\\"B\\\"", "" ,
+  "B-1",            "" ,
+  "HILL 100",  "HILL",
+  "^ ",             ""
+)
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Street", dict)
+#   Apply
+df2 <- applyregex(df2, "Street", dict)
+tail(head(sort(unique(df2$Street)),100),100)
+
+tail(head(sort(unique(df2$Street)),200),100)
+dictionary <- c(
+                "CLAYMORE PARK", "CLAYMOORE PARK",
+                "CR 397",        "COUNTY ROAD 397",
+                "DALE 1007",     "DALE",
+                " UTURN?",       "",
+                "FM1092",        "FM 1092"
+)
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Street", dict)
+#   Apply
+df2 <- applyregex(df2, "Street", dict)
+tail(head(sort(unique(df2$Street)),200),100)
+
+tail(head(sort(unique(df2$Street)),300),100)
+dictionary <- c(
+                "HWY6",         "HWY 6",
+                "FWY 210",      "FWY",
+                "FRWY",         "FWY",
+                "FREEWAY",      "FWY"
+)
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Street", dict)
+#   Apply
+df2 <- applyregex(df2, "Street", dict)
+df2$Street[grepl("^HCSO$",df2$Street)] <- NA # sheriff's office?
+df2$Street[grepl("^KB HOME$",df2$Street)] <- NA 
+df2$Street[grepl("^HOMELESS$",df2$Street)] <- NA 
+tail(head(sort(unique(df2$Street)),300),100)
+
+tail(head(sort(unique(df2$Street)),400),100)
+dictionary <- c(
+                "LONGBRANCH",   "LONG BRANCH",
+                "LONGPOINT Z",  "LONGPOINT",
+                "MISTY SHADOW$","MISTY SHADOWS",
+                "^N$",          "NORTH FWY",
+                " SERVICE$",    "",
+                " SERVICE RD$", "",
+                "NW FWY",       "NORTHWEST FWY",
+                " 6TH FL",      ""
+)
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Street", dict)
+#   Apply
+df2 <- applyregex(df2, "Street", dict)
+tail(head(sort(unique(df2$Street)),400),100)
+
+tail(head(sort(unique(df2$Street)),500),100)
+dictionary <- c(
+                "TEN PL",       "TEN PLACE",
+                "DRIV$",        "DR",
+                "DR H24$",      "DR",
+                "ROLLING WOOD", "ROLLINGWOOD",
+                "^SH 6$",       "HWY 6"
+)
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Street", dict)
+#   Apply
+df2 <- applyregex(df2, "Street", dict)
+df2$Street[grepl("^PR 2004$",df2$Street)] <- NA 
+df2$Street[grepl("^PRAIRIE RONDE HIGHWAY$",df2$Street)] <- NA #  Louisiana????
+tail(head(sort(unique(df2$Street)),500),100)
+
+tail(head(sort(unique(df2$Street)),600),100)
+dictionary <- c(
+                "SOUTHLAKE 4303", "SOUTHLAKE"
+)
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Street", dict)
+#   Apply
+df2 <- applyregex(df2, "Street", dict)
+df2$Street[grepl("^UNK$",df2$Street)] <- NA 
+tail(head(sort(unique(df2$Street)),600),100)
+
+tail(head(sort(unique(df2$Street)),700),100)
+dictionary <- c(
+                "WESTVIEW C-3", "WESTVIEW",
+                "^WPARK",        "W PARK",
+                "WEST SAM",      "W SAM",
+                "WEST FOR",      "W FOR",
+                "WEST HOL",      "W HOL",
+                "PKWY\\s*[NSEW]$","PKWY"
+)
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Street", dict)
+#   Apply
+df2 <- applyregex(df2, "Street", dict)
+tail(head(sort(unique(df2$Street)),700),100)
+
 
 #   If address is in Street field, extract it and create a block range from it
 
@@ -656,25 +701,8 @@ df2$Block_Range[maskaddr] <- addrs
 df2$Street <- str_replace_all(df2$Street,"^\\d{3,}\\s","")
 #   Done
 
+################   stopped here
 
-df2$Street <- str_replace_all(df2$Street,"^ALLEN\\s*PKWY","ALLEN PARKWAY")
-df2$Street <- str_replace_all(df2$Street,"^B CALUMET","CALUMET")
-
-
-#   Similary for DRIVE, DR,   
-df2$Street <- str_replace(df2$Street," DRIVE$"," DR")
-#   And for LANE and LN
-df2$Street <- str_replace(df2$Street," LANE$"," LN")
-#   And for WAY
-df2$Street <- str_replace(df2$Street," WY$"," WAY")
-#   And for CIRCLE
-df2$Street <- str_replace(df2$Street," CIR$"," CIRCLE")
-#   And for CT
-df2$Street <- str_replace(df2$Street," COURT$"," CT")
-#   And for AVE
-df2$Street <- sub("\\sAVENUE","AVE", df2$Street)
-#   Speedway
-df2$Street <- str_replace_all(df2$Street,"\\sSPDWY$"," SPEEDWAY")
 
 #   Put ST/RD/DR/CT/BLVD/LN/AVE/CIRCLE/WAY into Type field and remove from Street field
 matchstring <- c(" ST$| RD$| DR$| LN$| WAY$| BLVD$| CIRCLE$| CT$| PL$| CIR$| AVE$")
@@ -691,19 +719,10 @@ df2$Street[maska] <- sub(matchstring, "", df2$Street[maska])  #  remove value fr
 head(sort(unique(df2$Street)),100)
 
 
-df2$Street <- str_replace_all(df2$Street,"3457A ANITA","ANITA")
-df2$Street <- str_replace_all(df2$Street,"3605A REVEILLE","REVEILLE")
-df2$Street <- str_replace_all(df2$Street,"5600A MYKAWA","MYKAWA")
-df2$Street <- str_replace_all(df2$Street,"EAST 21","E 21")
-df2$Street <- str_replace_all(df2$Street," TRLR","")
-df2$Street <- str_replace_all(df2$Street," BEST BUY","")
-df2$Street <- str_replace_all(df2$Street,"","")
+
 ####   Look for some more anomalies
 df2$Street <- str_replace(df2$Street,"^CR ","COUNTY ROAD ")
-df2$Street <- str_replace(df2$Street,"NORTH WEBBER","WEBBER")
-df2$Street <- str_replace(df2$Street,"^EAST RIVER","E RIVER")
 df2$Street <- str_replace(df2$Street,"HIGHWAY","HWY")
-df2$Street <- str_replace(df2$Street,"^TAUB ","BEN TAUB ")
 maskHiway <- grepl("^IH |^FM |^TX |^I |HWY|^US |^SPUR |^COUNTY |^LAKES |^SH ",df2$Street)
 df2$Street[!maskHiway] <- str_replace(df2$Street[!maskHiway],"^SOUTH ","S ")
 
@@ -791,10 +810,6 @@ keepdf2 <- df2
 ####################  One more check
 tail(head(sort(unique(df2$Street)),100),100)
 
-df2$Street <- str_replace(df2$Street,"CCHENEVERTL","CHENEVERT") 
-df2$Street <- str_replace(df2$Street,"CHENEVERT STD","CHENEVERT") 
-df2$Street <- str_replace(df2$Street,"CENTERALCREST","CENTRALCREST") 
-df2$Street <- str_replace(df2$Street,"GULF FRY","GULF FWY") 
 df2$Street <- str_replace(df2$Street,"I-10 EAST","EAST FWY") 
 df2$Street <- str_replace(df2$Street,"IH 45 FWY","GULF FWY") 
 df2$Street <- str_replace(df2$Street,"S IH 45","GULF FWY") 
@@ -802,7 +817,6 @@ df2$Street <- str_replace(df2$Street,"^SAINT","ST")
 df2$Street <- str_replace(df2$Street,"^ST$","SAINT") 
 df2$Street <- str_replace(df2$Street,"^TAUB$","BEN TAUB") 
 
-##############   stopped here
 ########   Deal with Suffixes (N,S,E,W)
 mask <- grepl("N",df2$Suffix)
 maskout <- grepl("KATY|FWY|LOOP|EAST|HWY|^N ", df2$Street)
