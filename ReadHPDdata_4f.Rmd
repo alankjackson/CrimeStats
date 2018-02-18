@@ -494,7 +494,7 @@ df2$Block_Range <- sub("^$","UNK", df2$Block_Range)
 
 #  EASTEX FWY, GULF FWY, KATY FWY, NORTH FWY, NORTHWEST FWY,
 #  SOUTHWEST FWY, SOUTH FWY, EAST FWY, N SAM HOUSTON PKWY,
-#  HWY 6, NSEW SAM HOUSTON PKWY, CROSBY FWY, GRAND PKWY,
+#  HWY 6 N/S, N/S/E/W SAM HOUSTON PKWY, CROSBY FWY, GRAND PKWY,
 #  PASADENA FWY
 
 #####  Remove extra blanks, periods
@@ -647,7 +647,7 @@ tail(head(sort(unique(df2$Street)),400),100)
 
 tail(head(sort(unique(df2$Street)),500),100)
 dictionary <- c(
-                "TEN PL",       "TEN PLACE",
+                "TEN PL$",      "TEN PLACE",
                 "DRIV$",        "DR",
                 "DR H24$",      "DR",
                 "ROLLING WOOD", "ROLLINGWOOD",
@@ -701,9 +701,6 @@ df2$Block_Range[maskaddr] <- addrs
 df2$Street <- str_replace_all(df2$Street,"^\\d{3,}\\s","")
 #   Done
 
-################   stopped here
-
-
 #   Put ST/RD/DR/CT/BLVD/LN/AVE/CIRCLE/WAY into Type field and remove from Street field
 matchstring <- c(" ST$| RD$| DR$| LN$| WAY$| BLVD$| CIRCLE$| CT$| PL$| CIR$| AVE$")
 maska <- grepl(matchstring, df2$Street)
@@ -711,27 +708,53 @@ masktype <- grepl("-", df2$Type)
 matched_values <- str_extract(df2$Street[maska&masktype],matchstring)
 df2$Type[maska&masktype] <- matched_values  #  put value into Type field
 df2$Street[maska&masktype] <- sub(matchstring, "", df2$Street[maska&masktype])  #  remove value from Street field
+
+#   clean up extra space from Type field
+df2$Type <- str_replace(df2$Type,"^ ","")
+
 maska <- grepl(matchstring, df2$Street)
 matched_values <- str_extract(df2$Street[maska],matchstring)
 df2$Type[maska] <- matched_values  #  put value into Type field
 df2$Street[maska] <- sub(matchstring, "", df2$Street[maska])  #  remove value from Street field
 
-head(sort(unique(df2$Street)),100)
-
-
+tail(head(sort(unique(df2$Street)),100),100)
 
 ####   Look for some more anomalies
-df2$Street <- str_replace(df2$Street,"^CR ","COUNTY ROAD ")
-df2$Street <- str_replace(df2$Street,"HIGHWAY","HWY")
+dictionary <- c(
+                "HIGHWAY",       "HWY",
+                "^EAST ",        "E ",
+                "^NORTH (\\d)",  "N \\1",
+                "N SH 6 HWY",    "HWY 6 N",
+                "N SH 6",        "HWY 6 N"
+)
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Street", dict)
+#   Apply
+df2 <- applyregex(df2, "Street", dict)
+
+#####    work on highways separately
+#   Goals:
+#  EASTEX FWY, GULF FWY, KATY FWY, NORTH FWY, NORTHWEST FWY,
+#  SOUTHWEST FWY, SOUTH FWY, EAST FWY, N SAM HOUSTON PKWY,
+#  HWY 6 N/S, N/S/E/W SAM HOUSTON PKWY, CROSBY FWY, GRAND PKWY,
+#  PASADENA FWY
+
 maskHiway <- grepl("^IH |^FM |^TX |^I |HWY|^US |^SPUR |^COUNTY |^LAKES |^SH ",df2$Street)
-df2$Street[!maskHiway] <- str_replace(df2$Street[!maskHiway],"^SOUTH ","S ")
 
 #     Work on Direction indicators  and the Loop (N,S,E,W). LOOP wants spelled out
 #     and allow for North Fwy, South Fwy, and East Fwy
-df2$Street <- str_replace(df2$Street," SVC$","")
+dictionary <- c(
+                " LP ",          " LOOP ",
+                " LP$",          " LOOP",
+                " SVC$",         ""
+)
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Street", dict)
+#   Apply
+df2 <- applyregex(df2, "Street", dict)
 
-df2$Street <- str_replace(df2$Street," LP "," LOOP ")
-df2$Street <- str_replace(df2$Street," LP$"," LOOP")
 maskloop <- grepl(" LOOP", df2$Street)
 maskfwy <- grepl("FWY", df2$Type)
 maskfwy2 <- grepl(" FWY", df2$Street)
@@ -750,15 +773,18 @@ df2$Street[maskloop] <- str_replace(df2$Street[maskloop], "^W ","WEST ")
 df2$Street[maskloop] <- str_replace(df2$Street[maskloop], "^N ","NORTH ")
 df2$Street[maskloop] <- str_replace(df2$Street[maskloop], "^S ","SOUTH ")
 
-#   settle on Katy Fwy, Gulf Fwy, North, East, South FWY's, and LOOP instead of 610, Eastex
-df2$Street <- str_replace(df2$Street,"^US 59$","HWY 59") 
-df2$Street <- str_replace(df2$Street,"IH 45 FWY","IH 45") # remove FWY
-df2$Street <- str_replace(df2$Street,"IH 10 FWY","IH 10") # remove FWY
-df2$Street <- str_replace(df2$Street,"(IH \\d+)\\s.*","\\1") # remove anything after number
-df2$Street <- str_replace(df2$Street,"IH 610","LOOP") # Loop Fwy
-df2$Street <- str_replace(df2$Street,"LOOP E","LOOP") # Loop Fwy
-df2$Street <- str_replace(df2$Street,"LOOP EAST","LOOP") # Loop Fwy
-df2$Street <- str_replace(df2$Street,"^E LOOP","EAST LOOP") # Loop Fwy
+#   settle on Katy Fwy, Gulf Fwy, North, East, South FWY's, and LOOP instead of 610,
+dictionary <- c(
+                "HWY 69",          "SOUTHWEST FWY", # only this district
+                "IH 10",           "KATY FWY", # ditto
+                "IH 610",          "LOOP"
+)
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Street", dict)
+#   Apply
+df2 <- applyregex(df2, "Street", dict)
+
 #   use suffix to place loop as either NORTH or WEST
 masksuffix <- grepl("N", df2$Suffix)
 maskloop <- grepl("^LOOP$", df2$Street)
@@ -775,51 +801,59 @@ df2$Street[masksuffix&maskloop] <- "EAST LOOP"
 
 #   various freeways
 
-#     288
-df2$Street <- str_replace(df2$Street,"^S FWY$","SOUTH FWY")  
-df2$Street <- str_replace(df2$Street,"^SH 288\\s?\\w*","SOUTH FWY") # 290
-#     hwy 59/69
-df2$Street <- str_replace(df2$Street,"^HWY 59$","SOUTHWEST FWY")  
-#     290
-df2$Street <- str_replace(df2$Street,"^NORTHWEST$","NORTHWEST FWY") # 290
-df2$Street <- str_replace(df2$Street,"^US 290 FWY$","NORTHWEST FWY") # 290
-
+dictionary <- c(
+                "^S FWY$","SOUTH FWY", # 288
+                "^SH 288\\s?\\w*","SOUTH FWY", # 288
+                "^HWY 59$","SOUTHWEST FWY", #  US 59/ I-69
+                "^NORTHWEST$","NORTHWEST FWY", #  290
+                "^US 290 FWY$","NORTHWEST FWY", #  290
+                "^HWY 6 SOUTH$","S HWY 6", #  Hwy 6
+                "^HWY 6 N$","N HWY 6" #  Hwy 6
+)
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Street", dict)
+#   Apply
+df2 <- applyregex(df2, "Street", dict)
 #     Hwy 6
-df2$Street <- str_replace(df2$Street,"^HWY 6 SOUTH$","HWY 6")
-mask <- grepl("S",df2$Suffix)
-df2$Street[mask] <- str_replace(df2$Street[mask],"^HWY 6$","S HWY 6")
+maska <- grepl("S",df2$Suffix)
+df2$Street[maska] <- str_replace(df2$Street[mask],"^HWY 6$","S HWY 6")
 
 #   
-mask <- grepl("FWY",df2$Type)
+maska <- grepl("FWY",df2$Type)
 maskout <- grepl("FWY",df2$Street)
-df2$Street[mask&!maskout] <- paste(df2$Street[mask&!maskout],"FWY", sep=" ")
-df2$Street <- str_replace(df2$Street,"^US 59 FWY$","SOUTHWEST FWY") # 59
-df2$Street <- str_replace(df2$Street,"^US 59$","SOUTHWEST FWY") # 59
-df2$Street <- str_replace(df2$Street,"^SW FWY$","SOUTHWEST FWY") # 59
-df2$Street <- str_replace(df2$Street,"^SW$","SOUTHWEST FWY") # 59
-df2$Street <- str_replace(df2$Street,"^IH 45$","GULF FWY") 
-df2$Street <- str_replace(df2$Street,"^GULF$","GULF FWY") 
-df2$Street <- str_replace(df2$Street,"^KATY$","KATY FWY") 
-df2$Street <- str_replace(df2$Street,"^NORTH$","NORTH FWY") 
-df2$Street <- str_replace(df2$Street,"^SOUTH$","SOUTH FWY") 
-df2$Street <- str_replace(df2$Street,"^SOUTHWEST$","SOUTHWEST FWY") 
+df2$Street[maska&!maskout] <- paste(df2$Street[maska&!maskout],"FWY", sep=" ")
+
+dictionary <- c(
+                "^US 59 FWY$","SOUTHWEST FWY", # 59
+                "^US 59$","SOUTHWEST FWY", # 59
+                "^SW FWY$","SOUTHWEST FWY", # 59
+                "^SW$","SOUTHWEST FWY", # 59
+                "^IH 45$","GULF FWY", 
+                "^GULF$","GULF FWY", 
+                "^KATY$","KATY FWY", 
+                "^NORTH$","NORTH FWY", 
+                "^SOUTH$","SOUTH FWY", 
+                " ENTR "," ENT ", 
+                "SAM HOUSTON PARKWAY","SAM HOUSTON PKWY", 
+                "^SOUTHWEST$","SOUTHWEST FWY"
+                ) 
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Street", dict)
+#   Apply
+df2 <- applyregex(df2, "Street", dict)
 
 #############   done with freeways
+
 keepdf2 <- df2
 
 ####################  One more check
 tail(head(sort(unique(df2$Street)),100),100)
 
-df2$Street <- str_replace(df2$Street,"I-10 EAST","EAST FWY") 
-df2$Street <- str_replace(df2$Street,"IH 45 FWY","GULF FWY") 
-df2$Street <- str_replace(df2$Street,"S IH 45","GULF FWY") 
-df2$Street <- str_replace(df2$Street,"^SAINT","ST") 
-df2$Street <- str_replace(df2$Street,"^ST$","SAINT") 
-df2$Street <- str_replace(df2$Street,"^TAUB$","BEN TAUB") 
-
 ########   Deal with Suffixes (N,S,E,W)
 mask <- grepl("N",df2$Suffix)
-maskout <- grepl("KATY|FWY|LOOP|EAST|HWY|^N ", df2$Street)
+maskout <- grepl("KATY|SAM |FWY|LOOP|EAST|HWY|PKWY|^N ", df2$Street)
 sort(unique(df2$Street[mask&!maskout]))
 
 df2$Street[mask&!maskout] <- paste("N",df2$Street[mask&!maskout],sep=" ")
@@ -850,6 +884,7 @@ df2$Street[grepl("^[NSEW] NA$",df2$Street)] <- NA
 
 sort(unique(df2$Type))
 df2$Type <- str_replace_all(df2$Type," ","") 
+df2$Type <- str_replace_all(df2$Type,"FWY SER","SER") 
 df2$Type <- str_replace_all(df2$Type,"FWYSER","SER") 
 df2$Type <- str_replace_all(df2$Type,"^CIR$","CIRCLE") 
 ```
