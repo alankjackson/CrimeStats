@@ -38,7 +38,7 @@ testregex <- function(dframe, col, pat) { # input data frame and regex
 #   apply to input array
 applyregex <- function(dframe, col, pat) {
   for(i in 1:length(pat[,1])) {
-  dframe[[col]] <- str_replace(dframe[[col]],pat[i,1],pat[i,2])
+  dframe[[col]] <- str_replace_all(dframe[[col]],pat[i,1],pat[i,2])
   }
   return(dframe)
 }
@@ -328,12 +328,13 @@ sort(unique(df2$Beat))
 df2$Beat <- str_replace_all(df2$Beat,"\\W","")
 
 ```
-#############   stopped here
 
 ```{r Check Premise data}
 #################################
 # Premise
 #################################
+keepdf2 <- df2
+
 per_month = df2 %>% 
   mutate(mon = as.numeric(format(Date, "%m")), yr = as.numeric(format(Date, "%Y"))) %>%
   mutate(YrMon=yr+mon/12) %>%
@@ -353,60 +354,100 @@ sort(table(df2$Premise), decreasing=TRUE)
 
 #   Clean up obvious issues
 
-df2$Premise <-  str_replace(df2$Premise,"\n\\s+"," ") # get rid of extra spaces and \n
-df2$Premise <- sub("^$","Other or Unknown", df2$Premise)
-df2$Premise <- str_replace_all(df2$Premise, "  "," ") # 2 spaces to 1
-df2$Premise <- str_replace_all(df2$Premise, " and "," & ") # and to &
-df2$Premise <- str_replace_all(df2$Premise, " And "," & ")
-df2$Premise <- str_replace_all(df2$Premise, "/"," or ") # / to or
-df2$Premise <- str_replace_all(df2$Premise, ", ",",") # comma space to comma
-df2$Premise <- str_replace_all(df2$Premise, "Amuse. Park,Bowl.","Amusement Park,Bowling")
-df2$Premise <- str_replace_all(df2$Premise, "ment Rent","ment or Rent")
-df2$Premise <- str_replace_all(df2$Premise, "Saving ","Savings ")
-df2$Premise <- str_replace_all(df2$Premise, "rch,Syn","rch or Syn")
-df2$Premise <- str_replace_all(df2$Premise, ",or "," or ")
-df2$Premise <- str_replace_all(df2$Premise, " Or "," or ")
-df2$Premise <- str_replace_all(df2$Premise, "Sup\\.","Supplies")
-df2$Premise <- str_replace_all(df2$Premise, "Daycare or Child","Daycare,Child")
-df2$Premise <- str_replace_all(df2$Premise, "Factory or Manu","Factory, Manu")
-df2$Premise <- str_replace_all(df2$Premise, "Factory, Manu","Factory,Manu")
-df2$Premise <- str_replace_all(df2$Premise, "Field or Woods","Field,Woods,Forest,Park")
-df2$Premise <- str_replace_all(df2$Premise, "Tv","TV Store")
-df2$Premise <- str_replace_all(df2$Premise, "sery,Flor","sery or Flor")
-df2$Premise <- str_replace_all(df2$Premise, "Grocery Store","Grocery")
-df2$Premise <- str_replace_all(df2$Premise, "Pool$","Pool,Spa")
-df2$Premise <- str_replace_all(df2$Premise, "Hse,Indr","House,Indoor")
-df2$Premise <- str_replace_all(df2$Premise, "Hotel,Motel,Inn,Etc","Hotel or Motel or Etc")
-df2$Premise <- str_replace_all(df2$Premise, "Laundry,Dry Cleaners,Washaterias","Laundry or Dry Cleaners or Washaterias")
-df2$Premise <- str_replace_all(df2$Premise, "Misc\\.","Miscellaneous")
-df2$Premise <- str_replace_all(df2$Premise, "Hme","Home ")
-df2$Premise <- str_replace_all(df2$Premise, "Etc\\.","Etc")
-df2$Premise <- str_replace_all(df2$Premise, "Other,Unknown or Not Listed","Other or Unknown")
-df2$Premise <- str_replace_all(df2$Premise, "Not Listed","Other or Unknown")
-df2$Premise <- str_replace_all(df2$Premise, "Lake,Pond,Waterway,Bayou,River", "Lake or Waterway or Bayou")
-df2$Premise <- str_replace_all(df2$Premise, "Light Rail Vehicle","Light Rail (Metro Rail) Vehicle")
-df2$Premise <- str_replace_all(df2$Premise, "Veh\\.","Vehicle")
-df2$Premise <- str_replace_all(df2$Premise, "Swim ","Swimming ")
-df2$Premise <- str_replace_all(df2$Premise, "wn,Re","wn or Re")
-df2$Premise <- str_replace_all(df2$Premise, "Physician's Office","Physician,Doctor,Dentist's Office")
-df2$Premise <- str_replace_all(df2$Premise, " Of "," of ")
-df2$Premise <- str_replace_all(df2$Premise, "ad,St","ad or St")
-df2$Premise <- str_replace_all(df2$Premise, "Sprts","Sports")
-df2$Premise <- str_replace_all(df2$Premise, "na,Ra","na or Ra")
-df2$Premise <- str_replace_all(df2$Premise, "Auditor\\.","Auditoriums")
-df2$Premise <- str_replace_all(df2$Premise, "ts Cra","ts & Cra")
-df2$Premise <- str_replace_all(df2$Premise, "turing Blding","turing or Industrial")
-df2$Premise <- str_replace_all(df2$Premise, "Hotel,Motel,Etc","Hotel or Motel or Etc")
-df2$Premise <- str_replace_all(df2$Premise, "Apartment,Dorms","Apartment,Inn,Dorms,Boarding House")
-df2$Premise <- str_replace_all(df2$Premise, "Out Build or Monument or UnderConst","Structure \\(Out Buildings,Monuments,Buildings Under Construction,Etc\\)")
-df2$Premise <- str_replace_all(df2$Premise, "Occ Resd\\(House,Townhs,Dplex\\)","Occupancy Residence \\(Houses,Townhouses,Duplexes,Etc\\)")
-df2$Premise <- str_replace_all(df2$Premise, "Fac \\(Barn,Garage,Warehouse\\)","Facility \\(Barns,Garages,Warehouses,Etc\\)")
-df2$Premise <- str_replace_all(df2$Premise, "cord,Stat","cord or Stat")
-df2$Premise <- str_replace_all(df2$Premise, "care,Chil","care or Chil")
-df2$Premise <- str_replace_all(df2$Premise, "tory,Manu","tory or Manu")
-df2$Premise <- str_replace_all(df2$Premise, "Vacant School or College or University","Vacant School or College")
-df2$Premise <- str_replace_all(df2$Premise, ",Pet$",",Pet Stores")
-df2$Premise <- str_replace_all(df2$Premise, "ium,Spor","ium or Spor")
+dictionary <- c("\n\\s+",    " ",  # carriage returns
+                "^$",        "Other or Unknown", 
+                "  ",        " ",  #  double space
+                " and ",     " & ",
+                " And ",     " & ",
+                "/",         " or ",
+                ", ",        ",",
+                "Amuse. Park,Bowl.","Amusement Park,Bowling",
+                "ment Rent", "ment or Rent",
+                "Saving ",   "Savings "
+                )
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Premise", dict)
+#   Apply
+df2 <- applyregex(df2, "Premise", dict)
+
+dictionary <- c(
+                "rch,Syn",            "rch or Syn",
+                " Or ",               " or ",
+                "Sup\\.",             "Supplies",
+                "Daycare or Child",   "Daycare,Child",
+                "Factory or Manu",    "Factory, Manu",
+                "Field or Woods",     "Field,Woods,Forest,Park",
+                "Tv",                 "TV Store",
+                "Grocery Store",      "Grocery",
+                "Pool$",              "Pool,Spa",
+                "Hse,Indr",           "House,Indoor"
+)
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Premise", dict)
+#   Apply
+df2 <- applyregex(df2, "Premise", dict)
+
+#############   stopped here
+
+dictionary <- c(
+                "Misc\\.",               "Miscellaneous",
+                "Hme",                   "Home ",
+                "Etc\\.",                "Etc",
+                "Other,Unknown, or Not Listed","Other or Unknown",
+                "Not Listed",            "Other or Unknown",
+                "Swim ",                 "Swimming ",
+                "wn,Re",                 "wn or Re",
+                "Physician's Office",    "Physician,Doctor,Dentist's Office",
+                " Of ",                  " of ",
+                "ad,St",                 "ad or St"
+)
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Premise", dict)
+#   Apply
+df2 <- applyregex(df2, "Premise", dict)
+
+
+dictionary <- c(
+                "Sprts",           "Sports",
+                "ts Cra",          "ts & Cra",
+                "Apartment,Dorms", "Apartment,Inn,Dorms,Boarding House",
+                "Occ Resd\\(House,Townhs,Dplex\\)","Occupancy Residence \\(Houses,Townhouses,Duplexes,Etc\\)",
+                "Fac \\(Barn,Garage,Warehouse\\)","Facility \\(Barns,Garages,Warehouses,Etc\\)",
+                "cord,Stat",        "cord or Stat",
+                "care,Chil",        "care or Chil",
+                "tory,Manu",        "tory or Manu",
+                ",Pet$",            ",Pet Stores",
+                "ium,Spor",         "ium or Spor"
+)
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Premise", dict)
+#   Apply
+df2 <- applyregex(df2, "Premise", dict)
+
+dictionary <- c(
+                "Motel,Inn,Etc",        "Motel,Etc",
+                "Out Build or Monument or UnderConst", "Structure (Out Buildings,Monuments,Buildings Under Construction,Etc)",
+                "(\\w),or ",            "\\1 or ",
+                "(\\w),(\\w)",          "\\1 or \\2"
+)
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Premise", dict)
+#   Apply
+df2 <- applyregex(df2, "Premise", dict)
+
+#   Look for Premise not captured in ptab
+
+a <- sort(unique(df2$Premise))
+for (i in 1:length(a)){
+  if (!grepl(a[i], ptab[,1], fixed=TRUE)){
+    print(a[i])
+  }
+}
 
 
 sort(unique(df2$Premise))
@@ -422,10 +463,6 @@ reorder_size <- function(x) {
 ggplot(df2, aes(reorder_size(df2$Premise))) + geom_bar() + coord_flip()
 ggsave(paste("District",district,"_","PremiseFrequency.jpeg", sep=""), device="jpeg", path = paste(plotpath,"District",district,"_material/",sep=""))
 
-#   write out the cleaned premises so that a translation table may be created
-#b <- sort(unique(df2$Premise))
-#write.table(b,file="~/Dropbox/CrimeStats/ptable.csv", row.names = FALSE, col.names = FALSE)
-###########   editor magic happens
 #   Read in translation table Premise to ShortPremise and add to df2
 ptab <- read_csv("~/mirrors/ajackson/crime/data/ptable.csv")
 a <- left_join(df2,ptab,by="Premise")
@@ -434,6 +471,7 @@ sort(table(a$ShortPremise),decreasing=TRUE)
 df2 <- a
 rm(a)
 
+keepdf2 <- df2
 
 ```
 
