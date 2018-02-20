@@ -18,6 +18,12 @@ gmap = get_map(location=c(-95.4142, 29.7907), source="google",zoom=12)
 googleproj4 <- "+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext  +no_defs"
 googlecrs <- "4326"
 
+testgeocode <- function(x){
+              if(length(x$results)==0){
+                print(paste("--->", x$status))
+              }
+}
+
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
@@ -87,8 +93,10 @@ getfields <- function(x){
               Longitude=as.numeric(x$results[[1]]$geometry$location$lng),
               StreetName=x$results[[1]]$formatted_address,
               stringsAsFactors = FALSE)
+              } else if (x$status=="ZERO_RESULTS"){
+                data.frame(types="ZERO_RESULTS",Latitude=NA,Longitude=NA, StreetName=NA,stringsAsFactors = FALSE)
               } else{
-                data.frame(types=NA,Latitude=NA,Longitude=NA, StreetName=NA)
+                data.frame(types=NA,Latitude=NA,Longitude=NA, StreetName=NA,stringsAsFactors = FALSE)
               }
 }
 
@@ -195,21 +203,71 @@ workingset$StreetName2[2401:4800] = latlongs$StreetName
 Third pass on Add2
 
 ```{r get more lat longs from google}
-##### Run on 28th after 9PM
-#   Look for any coordinates left to do
-geomask <- is.na(workingset$lon2) & is.na(workingset$Longitude)
+##### Run on 17th after 9:30PM
+geocodeQueryCheck()
+Addresses <- paste(workingset$Add2[4801:5240], workingset$Street[4801:5240])
 
+AllLatLong <- geocode(Addresses, output="all") # geocode 2400 addresses
+
+latlongs <- map_df(AllLatLong, getfields) # extract desired fields
+
+workingset$lon2[4801:5240] = latlongs$Longitude
+workingset$lat2[4801:5240] = latlongs$Latitude
+workingset$type2[4801:5240] = latlongs$types
+workingset$StreetName2[4801:5240] = latlongs$StreetName
 
 ```
 
 
 
 ```{r get more lat longs from google}
+#############################################
 ##### Cleanup the ones that got skipped
-mask1 <- is.na(workingset$lon1)&is.na(workingset$avglon)
-mask2 <- is.na(workingset$lon2)&is.na(workingset$avglon)
+#############################################
+geocodeQueryCheck()
+###  rerun if lon1 and Longitude are NA, but not if ZERO_RESULTS
+mask1 <- is.na(workingset$lon1)&is.na(workingset$Longitude)& !(workingset$type == "ZERO_RESULTS" & !is.na(workingset$type))
+#   how many more to try?
+sum(mask1)
 
-######   start here on Monday after 9
+Addresses <- paste(workingset$Add1[mask1], workingset$Street[mask1])
+
+AllLatLong <- geocode(Addresses, output="all") # geocode addresses
+
+latlongs <- map_df(AllLatLong, getfields) # extract desired fields
+
+workingset$lon1[mask1] = latlongs$Longitude
+workingset$lat1[mask1] = latlongs$Latitude
+workingset$type[mask1] = latlongs$types
+workingset$StreetName[mask1] = latlongs$StreetName
+
+map_df(AllLatLong, testgeocode)
+
+##################  lather, rinse, repeat
+
+geocodeQueryCheck()
+
+mask2 <- is.na(workingset$lon2)&is.na(workingset$Longitude)& !(workingset$type2 == "ZERO_RESULTS" & !is.na(workingset$type2))
+sum(mask2)
+Addresses <- paste(workingset$Add2[mask2], workingset$Street[mask2])
+
+AllLatLong <- geocode(Addresses, output="all") # geocode addresses
+
+latlongs <- map_df(AllLatLong, getfields) # extract desired fields
+
+workingset$lon2[mask2] = latlongs$Longitude
+workingset$lat2[mask2] = latlongs$Latitude
+workingset$type2[mask2] = latlongs$types
+workingset$StreetName2[mask2] = latlongs$StreetName
+sum(is.na(workingset$lat1)&is.na(workingset$Latitude))
+sum(is.na(workingset$lon1)&is.na(workingset$Longitude))
+sum(is.na(workingset$lat2)&is.na(workingset$Latitude))
+sum(is.na(workingset$lon2)&is.na(workingset$Longitude))
+
+map_df(AllLatLong, testgeocode)
+##################  lather, rinse, repeat
+######   stopped here
+######   start here on Sunday after 9
 
 ###   some lat/longs are bogus. Find them and redo
 #   If the distance between latlong1 and 2 > 5x the median, redo
