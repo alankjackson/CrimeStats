@@ -6,6 +6,7 @@ output: html_document
 ```{r setup, include=FALSE}
 library("tidyverse")
 library("stringr") # string tools
+library("RCurl")
 library("rvest")# web scraping
 library("lettercase") # fiddle with letter case
 library("lubridate") # handle dates
@@ -376,6 +377,7 @@ dict <- Makedict(dictionary)
 testregex(df2, "Premise", dict)
 #   Apply
 df2 <- applyregex(df2, "Premise", dict)
+sort(table(df2$Premise), decreasing=TRUE)
 
 dictionary <- c(
                 "rch,Syn",            "rch or Syn",
@@ -395,14 +397,13 @@ testregex(df2, "Premise", dict)
 #   Apply
 df2 <- applyregex(df2, "Premise", dict)
 
-#############   stopped here
 
 dictionary <- c(
                 "Misc\\.",               "Miscellaneous",
                 "Hme",                   "Home ",
                 "Etc\\.",                "Etc",
-                "Other,Unknown, or Not Listed","Other or Unknown",
-                "Not Listed",            "Other or Unknown",
+                "^Other,Unknown, or Not Listed$","Other or Unknown",
+                "^Not Listed$",            "Other or Unknown",
                 "Swim ",                 "Swimming ",
                 "wn,Re",                 "wn or Re",
                 "Physician's Office",    "Physician,Doctor,Dentist's Office",
@@ -415,6 +416,8 @@ testregex(df2, "Premise", dict)
 #   Apply
 df2 <- applyregex(df2, "Premise", dict)
 
+sort(table(df2$Premise), decreasing=TRUE)
+#############   stopped here
 
 dictionary <- c(
                 "Sprts",           "Sports",
@@ -434,10 +437,21 @@ testregex(df2, "Premise", dict)
 #   Apply
 df2 <- applyregex(df2, "Premise", dict)
 
+sort(table(df2$Premise), decreasing=TRUE)
+
 dictionary <- c(
                 "Motel,Inn,Etc",        "Motel,Etc",
                 "Out Build or Monument or UnderConst", "Structure (Out Buildings,Monuments,Buildings Under Construction,Etc)",
                 "(\\w),or ",            "\\1 or ",
+                "Contra-Flow or Managed or HOV Lanes", "Contra-Flow or Hov",
+                "Lake or Pond or Waterway or Bayou or River", "Lake or Waterway or Bayou",
+                "Veh\\.", "Vehicle",
+                "Auditor\\.", "Auditoriums",
+                "Blding$", "Building",
+                " or University$", "",
+                "Factory, Manufacturing or Industrial", "Factory or Manufacturing Building",
+                "Factory or Manufacturing or Industrial", "Factory or Manufacturing Building",
+                "Vacant Industrial or Manufacturing or Industrial", "Vacant Industrial or Manufacturing Building",
                 "(\\w),(\\w)",          "\\1 or \\2"
 )
 dict <- Makedict(dictionary)
@@ -446,16 +460,23 @@ testregex(df2, "Premise", dict)
 #   Apply
 df2 <- applyregex(df2, "Premise", dict)
 
+sort(table(df2$Premise), decreasing=TRUE)
+
+
 #   Look for Premise not captured in ptab
+#   fix this to look for exact matches
 
 a <- sort(unique(df2$Premise))
+a <- str_replace(a, "\\(","\\\\(") #  escape parentheses  
+a <- str_replace(a, "\\)","\\\\)")
 for (i in 1:length(a)){
-  if (!grepl(a[i], ptab[,1], fixed=TRUE)){
+  if (!any(grepl(paste("\\b",a[i],"\\b",sep=""), as.character(ptab[,1])))){
     print(a[i])
   }
 }
 
 
+#  if (!grepl(paste("\\b",a[i],"\\b",sep=""), as.character(ptab[,1]))){
 sort(unique(df2$Premise))
 
 ggplot(data=df2) +
@@ -470,7 +491,7 @@ ggplot(df2, aes(reorder_size(df2$Premise))) + geom_bar() + coord_flip()
 ggsave(paste("District",district,"_","PremiseFrequency.jpeg", sep=""), device="jpeg", path = paste(plotpath,"District",district,"_material/",sep=""))
 
 #   Read in translation table Premise to ShortPremise and add to df2
-ptab <- read_csv("~/mirrors/ajackson/crime/data/ptable.csv")
+ptab <- read.csv("~/mirrors/ajackson/crime/data/ptable.csv")
 a <- left_join(df2,ptab,by="Premise")
 sum(is.na(a$ShortPremise))
 sort(table(a$ShortPremise),decreasing=TRUE)
