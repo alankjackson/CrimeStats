@@ -62,7 +62,7 @@ workingset <- workingset[complete.cases(workingset),]
 
 # match with geotable to use lat long values that are already known
 workingset <- left_join(workingset, geotable, by="Address")
-workingset <- select(workingset,Address, Add1, Add2, Street.x, Longitude, Latitude)
+workingset <- select(workingset, Address, Add1, Add2, Street.x, Longitude, Latitude)
 colnames(workingset)[4]="Street"
 
 ```
@@ -83,20 +83,22 @@ latlongs <- data.frame(types=character(),
                  Latitude=numeric(), 
                  Longitude=numeric(), 
                  StreetName=character(),
+                 LocType=character(),
                  stringsAsFactors=FALSE) 
 
 #   Function for pulling fields out of nested lists returned by geocode
 getfields <- function(x){
               if(length(x$results)>0)  {data.frame(
-              types=x$results[[1]]$types[1],
-              Latitude=as.numeric(x$results[[1]]$geometry$location$lat),
-              Longitude=as.numeric(x$results[[1]]$geometry$location$lng),
-              StreetName=x$results[[1]]$formatted_address,
+              types=x$results[[1]]["types"][1],
+              Latitude=as.numeric(x$results[[1]]$geometry$location["lat"]),
+              Longitude=as.numeric(x$results[[1]]$geometry$location["lng"]),
+              StreetName=x$results[[1]]["formatted_address"],
+              LocType=x$results[[1]]$geometry$location_type,
               stringsAsFactors = FALSE)
-              } else if (x$status=="ZERO_RESULTS"){
-                data.frame(types="ZERO_RESULTS",Latitude=NA,Longitude=NA, StreetName=NA,stringsAsFactors = FALSE)
+              } else if (exists("x$status") && x["status"]=="ZERO_RESULTS"){
+                data.frame(types="ZERO_RESULTS",Latitude=NA,Longitude=NA, StreetName=NA,LocType=NA,stringsAsFactors = FALSE)
               } else{
-                data.frame(types=NA,Latitude=NA,Longitude=NA, StreetName=NA,stringsAsFactors = FALSE)
+                data.frame(types=NA,Latitude=NA,Longitude=NA, StreetName=NA,LocType=NA,stringsAsFactors = FALSE)
               }
 }
 
@@ -116,13 +118,16 @@ workingset$lon2 <- NA
 workingset$lat2 <- NA
 workingset$type <- NA
 workingset$StreetName <- NA
+workingset$LocType <- NA
 workingset$type2 <- NA
 workingset$StreetName2 <- NA
+workingset$LocType2 <- NA
 
 workingset$lon1[1:2400] = latlongs$Longitude
 workingset$lat1[1:2400] = latlongs$Latitude
 workingset$type[1:2400] = latlongs$types
 workingset$StreetName[1:2400] = latlongs$StreetName
+workingset$LocType[1:2400] = latlongs$LocType
 
 ```
 
@@ -141,6 +146,7 @@ workingset$lon1[2401:4800] = latlongs$Longitude
 workingset$lat1[2401:4800] = latlongs$Latitude
 workingset$type[2401:4800] = latlongs$types
 workingset$StreetName[2401:4800] = latlongs$StreetName
+workingset$LocType[2401:4800] = latlongs$LocType
 
 ```
 
@@ -158,6 +164,7 @@ workingset$lon1[4801:5240] = latlongs$Longitude
 workingset$lat1[4801:5240] = latlongs$Latitude
 workingset$type[4801:5240] = latlongs$types
 workingset$StreetName[4801:5240] = latlongs$StreetName
+workingset$LocType[4801:5240] = latlongs$LocType
 ```
 
 
@@ -178,6 +185,7 @@ workingset$lon2[1:2400] = latlongs$Longitude
 workingset$lat2[1:2400] = latlongs$Latitude
 workingset$type2[1:2400] = latlongs$types
 workingset$StreetName2[1:2400] = latlongs$StreetName
+workingset$LocType2[1:2400] = latlongs$LocType
 
 ```
 
@@ -197,6 +205,7 @@ workingset$lon2[2401:4800] = latlongs$Longitude
 workingset$lat2[2401:4800] = latlongs$Latitude
 workingset$type2[2401:4800] = latlongs$types
 workingset$StreetName2[2401:4800] = latlongs$StreetName
+workingset$LocType2[2401:4800] = latlongs$LocType
 
 ```
 
@@ -215,6 +224,7 @@ workingset$lon2[4801:5240] = latlongs$Longitude
 workingset$lat2[4801:5240] = latlongs$Latitude
 workingset$type2[4801:5240] = latlongs$types
 workingset$StreetName2[4801:5240] = latlongs$StreetName
+workingset$LocType2[4801:5240] = latlongs$LocType
 
 ```
 
@@ -240,6 +250,7 @@ workingset$lon1[mask1] = latlongs$Longitude
 workingset$lat1[mask1] = latlongs$Latitude
 workingset$type[mask1] = latlongs$types
 workingset$StreetName[mask1] = latlongs$StreetName
+workingset$LocType[mask1] = latlongs$LocType
 
 map_df(AllLatLong, testgeocode)
 
@@ -259,6 +270,7 @@ workingset$lon2[mask2] = latlongs$Longitude
 workingset$lat2[mask2] = latlongs$Latitude
 workingset$type2[mask2] = latlongs$types
 workingset$StreetName2[mask2] = latlongs$StreetName
+workingset$LocType2[mask2] = latlongs$LocType
 sum(is.na(workingset$lat1)&is.na(workingset$Latitude))
 sum(is.na(workingset$lon1)&is.na(workingset$Longitude))
 sum(is.na(workingset$lat2)&is.na(workingset$Latitude))
@@ -266,35 +278,6 @@ sum(is.na(workingset$lon2)&is.na(workingset$Longitude))
 
 map_df(AllLatLong, testgeocode)
 ##################  lather, rinse, repeat
-######   stopped here
-######   start here on Sunday after 9
-
-###   some lat/longs are bogus. Find them and redo
-#   If the distance between latlong1 and 2 > 5x the median, redo
-distance <- abs(workingset$lat2- workingset$lat1) + abs(workingset$lon2- workingset$lon1)
-distance <- as.data.frame(distance)
-distance[is.na(distance)] <- 0
-meddist <- 5*median(distance$distance, na.rm = TRUE)
-filter(distance, distance>0.01&distance<5) %>%
- ggplot() +
- geom_histogram(aes(x=distance),binwidth = 0.01)
-
-bogus <- distance>meddist
-########   Wednesday start here
-latlong1 = geocode(paste(workingset[bogus,]$Add1, workingset[bogus,]$Street))
-workingset[bogus,]$lon1 - latlong1$lon
-workingset[bogus,]$lat1 - latlong1$lat
-
-workingset[bogus,]$lon1 = latlong1$lon
-workingset[bogus,]$lat1 = latlong1$lat
-
-latlong2 = geocode(paste(workingset[bogus,]$Add2, workingset[bogus,]$Street))
-
-workingset[bogus,]$lon2 - latlong2$lon
-workingset[bogus,]$lat2 - latlong2$lat
-
-workingset[bogus,]$lon2 = latlong2$lon
-workingset[bogus,]$lat2 = latlong2$lat
 
 #   set any coordinate outside the box to NA
 
@@ -309,15 +292,82 @@ workingset$lat1[outside] <- NA
 
 outside <- workingset$lat2<HoustonBoundary[2] | workingset$lat2>HoustonBoundary[4] | is.na(workingset$lat2)
 workingset$lat2[outside] <- NA
+  
+#   Check input street names against output
 
+getstreet <- function(x){
+  a <- str_replace(strsplit(x[4]," ,")[[1]][1],"\\d* ","") # get everything before ","
+  a[[1]][length(a[[1]])] # take last item in that field
+}
+#   Pull out names given to google
+a <- as.data.frame(apply(workingset,1,getstreet))
+names(a) <- "Street"
+
+#  Compare names with names google supplied 
+problemchildren <- data.frame(child=character(), stringsAsFactors = FALSE)
+for (i in 1:length(a$Street)){
+  if (!grepl(a$Street[i], workingset$StreetName[i], ignore.case = TRUE)&!is.na(workingset$StreetName[i])) {
+    tempdf <- data.frame(child=paste(i,a$Street[i], workingset$StreetName[i], sep=" : ") )
+    problemchildren <- rbind(problemchildren, tempdf)
+  }
+}
+
+#   null out lat/lon where streets don't match
+
+NullOut <- c(50, 307, 360, 462, 466, 907, 1235, 1286, 1367, 1473, 1498, 1758, 1836, 1879, 1956, 2022, 2096, 2328, 2365, 2451, 2614, 2672, 2679, 2706, 2765, 2786, 2800, 2911, 2931, 2967, 2989, 3126, 3145, 3346, 3375, 3399, 3536, 3640, 3737, 3826, 3908, 3923, 3939, 4050, 4154, 4213, 4243, 4297, 4328, 4356, 4364, 4365, 4370, 4420, 4422, 4424, 4455, 4479, 4497, 4498, 4509, 4513, 4514, 4551, 4566, 4605, 4606, 4615, 4648, 4559, 4678, 4680, 4684, 4696, 4750, 4753, 4779, 4812, 4860, 4879, 4881, 4888, 4891, 4928, 4946, 4951, 4961, 4966, 4968, 4984, 4988, 4995, 4997, 5003, 5011, 5015, 5023, 5049, 5073, 5102, 5114, 5147, 5192, 5218, 5232)
+
+for (i in NullOut) {workingset$lat1[i] <- NA
+                    workingset$lon1[i] <- NA
+                    }
+
+#  Compare names with names google supplied 
+problemchildren <- data.frame(child=character(), stringsAsFactors = FALSE)
+for (i in 1:length(a$Street)){
+  if (!grepl(a$Street[i], workingset$StreetName2[i], ignore.case = TRUE)&!is.na(workingset$StreetName[i])) {
+    tempdf <- data.frame(child=paste(i,a$Street[i], workingset$StreetName2[i], sep=" : ") )
+    problemchildren <- rbind(problemchildren, tempdf)
+  }
+}
+NullOut <- c(1367, 1473, 1702, 1956, 2022, 2274, 2328, 2589, 2706, 2765, 2786, 2800, 2911, 2967, 3126, 3145, 3399, 3427, 3440, 3766, 3783, 3908, 3955, 3986, 4214, 4235, 4292, 4296, 4297, 4299, 4328, 4356, 4360, 4364, 4365, 4370, 4389, 4420, 4424, 4452, 4462, 4464, 4475, 4479, 4497, 4498, 4509, 4546, 4551, 4568, 4605, 4606, 4614, 4615, 4619, 4659, 4670, 4673, 4678, 4679, 4684, 4888, 4891, 4928, 4953, 4961, 4962, 4966, 4968, 4984, 4994, 4995, 4997, 5003, 5004, 5011, 5023, 5030, 5049, 5073, 5102, 5121, 5147, 5176, 5218, 5231, 5232
+)
+for (i in NullOut) {workingset$lat1[i] <- NA
+                    workingset$lon1[i] <- NA
+                    }
+
+###   some lat/longs are bogus. Find them 
+#   If the distance between latlong1 and 2 > 5x the median, flag
+distance <- sqrt((workingset$lat2- workingset$lat1)**2 + (workingset$lon2- workingset$lon1)**2)* 69 # approximately in miles
+distance <- as.data.frame(distance)
+distance[is.na(distance)] <- 0
+meddist <- 5*median(distance$distance, na.rm = TRUE)
+filter(distance, distance>0.01&distance<5*meddist) %>%
+ ggplot() +
+ geom_histogram(aes(x=distance),binwidth = 0.01) +
+  xlab("miles")
+
+bogus <- distance>meddist
+
+problemchildren <- workingset[bogus,]
+
+#   null out bogus lat lons
+
+workingset$lat1[bogus] <- NA
+workingset$lon1[bogus] <- NA
+workingset$lat2[bogus] <- NA
+workingset$lon2[bogus] <- NA
 #   Average lats and longs to get block center coordinates
 
 keepworking = workingset
-workingset$avglon <- rowMeans(subset(workingset, select=c(lon1, lon2)), na.rm = TRUE) 
-workingset$avglat <- rowMeans(subset(workingset, select=c(lat1, lat2)), na.rm = TRUE) 
+workingset$Longitude <- rowMeans(subset(workingset, select=c(lon1, lon2)), na.rm = TRUE) 
+workingset$Latitude <- rowMeans(subset(workingset, select=c(lat1, lat2)), na.rm = TRUE) 
 
-newGeotable <- workingset %>% select(Address, Street, Block_Range, avglon, avglat)
-names(newGeotable) <- c("Address", "Street", "Block_Range","Longitude", "Latitude")
+getblk <- function(x){return(strsplit(x["Address"]," ", fixed = TRUE)[[1]][1])}
+blks <- as.data.frame(apply(workingset,1,getblk), stringsAsFactors = FALSE)
+colnames(blks) <- "Block_Range"
+workingset <- cbind(workingset, blks, stringsAsFactors=FALSE)
+
+newGeotable <- workingset %>% select(Address, Street, Block_Range, Longitude, Latitude, StreetName)
+names(newGeotable) <- c("Address", "Street", "Block_Range","Longitude", "Latitude", "GoogleName")
 saveRDS(newGeotable, "~/Dropbox/CrimeStats/GeoTable.rds")
 
 ```
