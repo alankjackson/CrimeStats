@@ -3,13 +3,19 @@ R code and datasets for analyzing crime data in the Houston area
 
 For HPD data:
 
-    Read in data for district "a"
+    Read in data for districts
         ReadHPDdata_1a.Rmd
         ReadHPDdata_2a.Rmd
+        ReadHPDdata_4f.Rmd
+        ReadHPDdata_5f.Rmd
+        ReadHPDdata_10h.Rmd
 
     Output files from read and clean exercise
         District1aCleanData.rds
         District2aCleanData.rds
+        District4fCleanData.rds
+        District5fCleanData.rds
+        District10hCleanData.rds
 
     PremiseTable.rds -  translation table to go from large number of
                         premise names to a small number
