@@ -1,0 +1,1030 @@
+---
+title: "ReadHPDdata_19g"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library("tidyverse")
+library("stringr") # string tools
+library("RCurl")
+library("rvest")# web scraping
+library("lettercase") # fiddle with letter case
+library("lubridate") # handle dates
+
+PremiseTable = readRDS("/home/ajackson/mirrors/ajackson/crime/data/PremiseTable.rds")
+#   Read in translation table Premise to ShortPremise
+ptab <- read.csv("~/mirrors/ajackson/crime/data/ptable.csv")
+
+plotpath <- "/home/ajackson/Dropbox/CrimeStats/District_material/"
+
+#     Create dictionary data frame of pattern/replacement
+Makedict <- function(dictionary) {
+  dict <- cbind.data.frame(split(dictionary, rep(1:2, times=length(dictionary)/2)), stringsAsFactors=F)
+  names(dict) <- c("From", "To")
+  return(dict)
+}
+
+#   test the searches first to see what they will find
+testregex <- function(dframe, col, pat) { # input data frame and regex
+  for(i in 1:length(pat[,1])) {
+    print(paste("Pattern: ",pat[i,1]))
+    hits <- unique(dframe[[col]][grepl(pat[i,1],dframe[[col]])])
+    if (length(hits)>0){
+      print(paste("   Result: ", hits))
+    }
+    else {
+      print("No hits")
+    }
+  }
+}
+
+#   apply to input array
+applyregex <- function(dframe, col, pat) {
+  for(i in 1:length(pat[,1])) {
+  dframe[[col]] <- str_replace_all(dframe[[col]],pat[i,1],pat[i,2])
+  }
+  return(dframe)
+}
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r read premise code translation table in}
+# read in table of premise code and make a dataset
+
+url = "http://www.houstontx.gov/police/cs/beatpages/premise.htm"
+
+premise <- url %>% 
+  read_html() %>% 
+  html_nodes(xpath='//table') %>% 
+  html_table(header=TRUE)
+premise <- premise[[1]]
+
+# clean up descriptions to make more readable
+
+premise$`Premise Description` <- str_title_case(str_lower_case(premise$`Premise Description`))
+premise$`Premise Description` <- str_replace_all(premise$`Premise Description`," And ", " and ")
+premise$`Premise Description` <- str_replace_all(premise$`Premise Description`," Of ", " of ")
+
+# make compatible with monthly files
+
+colnames(premise)[1] <- "Premise"
+
+```
+
+
+#   Set up to read in all the files for a district
+#   http://www.houstontx.gov/police/cs/beatpages
+
+```{r read district}
+#   set year range, months, and district
+year_range = str_pad(as.character(9:17),2,pad="0")
+months = tolower(month.abb[1:12])
+district <- "19g"  # South Central Patrol Division
+beats <- c("19g10","19g20","19g30","19g40", "19g50")
+
+
+# initialize empty data frame
+
+df2 <- tibble(Date=character(),
+              Hour=character(),
+              Offense_Type=character(),
+              Beat=character(),
+              Premise=character(),
+              Block_Range=character(),
+              Street=character(),
+              Type=character(),
+              Suffix=character(),
+              Num_Off=integer() )
+
+####################################
+# now let's spin through the files
+####################################
+flag = FALSE
+premiseflag = TRUE # months before June 2014 used premise codes - need to convert
+for (yr in year_range)
+{
+  for (mon in months)
+    {
+    # Aug '17 at district is missing, so skip
+    if ((yr == "17") && (mon == "aug")) {next}
+    
+    url = paste("http://www.houstontx.gov/police/cs/stats20",yr,"/",mon,yr,"/districts/",mon,yr,district,".htm", sep="")
+    print(url)
+    if (! url.exists(url)) {
+      print("============================== no such url")
+      {next}
+    }
+    
+# most of 2009 and January 2010 are different...
+if ((yr=="09"&&mon %in% c("jan","feb","mar","apr","may","jun","jul","sep","nov")) || (yr=="10"&&mon=="jan")) {
+  tempfile <- url %>% 
+    read_html() %>% 
+    html_nodes(xpath='/html/body/table') %>% 
+    html_table(header=TRUE)
+}
+    else {
+    # read in html table and parse into a data frame
+    tempfile <- url %>% 
+      read_html() %>% 
+      html_nodes(xpath='/html/body/div/table') %>% 
+      html_table(header=TRUE, fill=TRUE)
+}
+    tempfile <- tempfile[[1]]
+    
+    # June and July 2014 are missing the premise column
+    if ((yr=="14")&&(mon=="jul" || mon=="jun")){
+      tempfile <- tempfile %>% mutate(Premise=NA)
+      tempfile <- tempfile[c(1,2,3,4,10,5,6,7,8,9)]
+      premiseflag = FALSE
+    }
+    # Jan through May 2009 are missing the Num_Off column and have time instead of hour
+    if ((yr=="09") && (mon %in% c("jan","feb","mar","apr","may"))){
+      tempfile <- tempfile %>% mutate(Num_Off=NA)
+      tempfile[,2] <- substr(tempfile[,2],1,nchar(tempfile[,2])-2)
+      tempfile[,2] <- sub("^$", "00", tempfile[,2])
+      tempfile$Block <- paste(as.character(tempfile$Block), as.character(tempfile$Block+99),sep="-")
+    }
+    # Remove nonsense columns
+    tempfile <- select(tempfile,-starts_with("Field"))
+    
+    # Force consistent column names
+    names(tempfile) <- c("Date","Hour","Offense_Type","Beat","Premise","Block_Range","Street","Type","Suffix","Num_Off")
+    
+    # some hour fields are borked with character data
+    tempfile$Hour <- as.character(tempfile$Hour)
+    
+    # if an early file, replace premise codes with premise descriptions
+    if (premiseflag){
+      tempfile["Premise"] <- left_join(tempfile,premise, by="Premise")["Premise Description"]
+    }
+    # append to df2
+    df2 <- bind_rows(df2, tempfile)
+    
+    # time to stop? 
+    if ((yr == "17") && (mon == "nov")) {flag = TRUE; break}
+  }
+  if (flag) {break}
+}
+
+```
+
+#     August 2017 district files missing, so read individual beat files instead
+
+```{r read in August 2017 by beat}
+
+for (beat in beats)
+    {
+    
+    url = paste("http://www.houstontx.gov/police/cs/stats2017/aug17/aug17",beat,".htm", sep="")
+    print(url)
+    
+
+    # read in html table and parse into a data frame
+    tempfile <- url %>% 
+      read_html() %>% 
+      html_nodes(xpath='/html/body/div/table') %>% 
+      html_table(header=TRUE)
+    tempfile <- tempfile[[1]]
+    
+    # Remove nonsense columns
+    tempfile <- select(tempfile,-starts_with("Field"))
+    
+    # Force consistent column names
+    names(tempfile) <- c("Date","Hour","Offense_Type","Beat","Premise","Block_Range","Street","Type","Suffix","Num_Off")
+    
+    # some hour fields are borked with character data
+    tempfile$Hour <- as.character(tempfile$Hour)
+    
+    # append to df2
+    df2 <- bind_rows(df2, tempfile)
+  }
+
+```
+
+
+```{r generate some basic statics on data quality}
+
+#################################
+# How many nulls everywhere?
+#################################
+df2 %>%
+    map_df(function(x) sum(is.na(x))) %>%
+    gather(feature, num_nulls) %>%
+    print(n = 100)
+```
+
+*********************  23 Feb stop
+
+```{r Check Dates }
+#################################
+# Dates
+#################################
+#--- plot number of incident records by date
+a <- table(df2$Date)
+barplot(a)
+hist(a, breaks=20)
+#--- print the top and bottom dates
+b <- df2 %>%
+  group_by(Date) %>%
+  summarise(num=n()) 
+arrange(b,num) %>% head(120)
+arrange(b,num) %>% tail(5)
+############
+##  convert date string to actual date, and then trim bad dates out
+############
+df2$Date <- mdy(df2$Date)
+df2 <- df2 %>%
+  filter(between(Date,mdy("1/1/2009"),mdy("1/1/2018")))
+
+df2 %>% group_by(Date) %>%
+  summarise(Total_Incidents_per_Day=n()) %>%
+ggplot(aes(Total_Incidents_per_Day)) +
+  geom_bar()
+
+ggsave(paste("District",district,"_","IncidentsPerDayHist.jpeg", sep=""), device="jpeg", path = paste(plotpath,"District",district,"_material/",sep=""))
+```
+
+
+```{r Check Hour field}
+#################################
+# Hour
+#################################
+
+sort(unique(df2$Hour))
+# remove non-numerics and change to integer
+df2$Hour <- str_replace_all(df2$Hour,"\\D","")
+df2$Hour <- as.integer(df2$Hour)
+
+sort(unique(df2$Hour))
+ggplot(data=df2) +
+  geom_bar(aes(x=Hour)) +
+  labs(title=paste("Incidents per Hour of Day, District",district))
+ggsave(paste("District",district,"_","IncidentsPerHourHist.jpeg", sep=""), device="jpeg", path = paste(plotpath,"District",district,"_material/",sep=""))
+```
+
+```{r Check Offense_Type field}
+#################################
+# Offense_Type
+#################################
+
+sort(unique(df2$Offense_Type))
+
+#   clean up Offense_Type and look again for issues
+
+#   dictionary of changes
+dictionary <- c("\n\\s+",    " ", 
+                "Forcible ",  "", 
+                "AutoTheft", "Auto Theft",
+                " of a Motor Vehicle", "",
+                " & Nonnegligent Manslaughter", ""
+                )
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Offense_Type", dict)
+#   Apply
+df2 <- applyregex(df2, "Offense_Type", dict)
+
+#   One record has an incident type of "1". We'll just delete that record.
+df2 <- df2[!df2$Offense_Type=="1",]
+#   Bar chart of various incidents
+ggplot(data=df2) +
+  geom_bar(aes(x=Offense_Type)) +
+  labs(title=paste("Incidents per Offense Type, District",district)) +
+  coord_flip()
+ggsave(paste("District",district,"_","IncidentsPerOffenseType.jpeg", sep=""), device="jpeg", path = paste(plotpath,"District",district,"_material/",sep=""))
+# Plot of incidents per month vs date
+per_month = df2 %>% 
+  mutate(mon = as.numeric(format(Date, "%m")), yr = as.numeric(format(Date, "%Y"))) %>%
+  mutate(YrMon=yr+mon/12) %>%
+  group_by(YrMon, Offense_Type) %>%
+  summarize(total=n())
+
+ggplot(data=per_month, mapping=aes(x=YrMon, y=total, color=Offense_Type)) +
+  geom_point() +
+  geom_line() +
+  labs(title="Total incidents in the Heights ", y="Total incidents per month", x="Averaged Monthly") 
+ggsave(paste("District",district,"_","IncidentsPerMonthPerOffenseType.jpeg", sep=""), device="jpeg", path = paste(plotpath,"District",district,"_material/",sep=""))
+
+#   filter out past 2010 to get a better view of what is going on
+per_month = df2 %>% 
+  mutate(mon = as.numeric(format(Date, "%m")), yr = as.numeric(format(Date, "%Y"))) %>%
+  mutate(YrMon=yr+mon/12) %>%
+  filter(YrMon<2011) %>%
+  group_by(YrMon, Offense_Type) %>%
+  summarize(total=n())
+ggplot(data=per_month, mapping=aes(x=YrMon, y=total, color=Offense_Type)) +
+  geom_point() +
+  geom_line() +
+  labs(title="Total incidents in the Heights expanded", y="Total incidents per month", x="Averaged Monthly") 
+
+#     Get rid of all data prior to June 2009, since it cannot be compared with later data
+
+df2 <- df2 %>%
+  filter(between(Date,mdy("6/1/2009"),mdy("1/1/2018")))
+sort(unique(df2$Offense_Type))
+
+```
+
+```{r Check Beat data}
+#################################
+# Beat
+#################################
+
+sort(unique(df2$Beat))
+# remove non-alphanumerics
+df2$Beat <- str_replace_all(df2$Beat,"\\W","")
+
+```
+
+```{r Check Premise data}
+#################################
+# Premise
+#################################
+keepdf2 <- df2
+
+per_month = df2 %>% 
+  mutate(mon = as.numeric(format(Date, "%m")), yr = as.numeric(format(Date, "%Y"))) %>%
+  mutate(YrMon=yr+mon/12) %>%
+  group_by(YrMon) %>%
+  summarize(count=sum(is.na(Premise)))
+
+ggplot(data=per_month, mapping=aes(x=YrMon, y=count)) +
+  geom_point() +
+  labs(title="Blank Premise fields per month", y="Total blanks per month", x="Averaged Monthly") 
+
+ggsave(paste("District",district,"_","BlankPremiseFieldDistribution.jpeg", sep=""), device="jpeg", path = paste(plotpath,"District",district,"_material/",sep=""))
+
+#   make more manageable by changing NULL to UNK
+df2$Premise[is.na(df2$Premise)] <- "Other or Unknown"
+
+sort(table(df2$Premise), decreasing=TRUE)
+
+#   Clean up obvious issues
+
+dictionary <- c("\n\\s+",    " ",  # carriage returns
+                "^$",        "Other or Unknown", 
+                "  ",        " ",  #  double space
+                " and ",     " & ",
+                " And ",     " & ",
+                "/",         " or ",
+                ", ",        ",",
+                "Amuse. Park,Bowl.","Amusement Park,Bowling",
+                "ment Rent", "ment or Rent",
+                "Saving ",   "Savings "
+                )
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Premise", dict)
+#   Apply
+df2 <- applyregex(df2, "Premise", dict)
+sort(table(df2$Premise), decreasing=TRUE)
+
+dictionary <- c(
+                "rch,Syn",            "rch or Syn",
+                " Or ",               " or ",
+                "Sup\\.",             "Supplies",
+                "Daycare or Child",   "Daycare,Child",
+                "Factory or Manu",    "Factory, Manu",
+                "Field or Woods",     "Field,Woods,Forest,Park",
+                "Tv",                 "TV Store",
+                "Grocery Store",      "Grocery",
+                "Pool$",              "Pool,Spa",
+                "Hse,Indr",           "House,Indoor"
+)
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Premise", dict)
+#   Apply
+df2 <- applyregex(df2, "Premise", dict)
+
+
+dictionary <- c(
+                "Misc\\.",               "Miscellaneous",
+                "Hme",                   "Home ",
+                "Etc\\.",                "Etc",
+                "^Other,Unknown, or Not Listed$","Other or Unknown",
+                "^Not Listed$",            "Other or Unknown",
+                "Swim ",                 "Swimming ",
+                "wn,Re",                 "wn or Re",
+                "Physician's Office",    "Physician,Doctor,Dentist's Office",
+                " Of ",                  " of ",
+                "ad,St",                 "ad or St"
+)
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Premise", dict)
+#   Apply
+df2 <- applyregex(df2, "Premise", dict)
+
+sort(table(df2$Premise), decreasing=TRUE)
+#############   stopped here
+
+dictionary <- c(
+                "Sprts",           "Sports",
+                "ts Cra",          "ts & Cra",
+                "Apartment,Dorms", "Apartment,Inn,Dorms,Boarding House",
+                "Occ Resd\\(House,Townhs,Dplex\\)","Occupancy Residence \\(Houses,Townhouses,Duplexes,Etc\\)",
+                "Fac \\(Barn,Garage,Warehouse\\)","Facility \\(Barns,Garages,Warehouses,Etc\\)",
+                "cord,Stat",        "cord or Stat",
+                "care,Chil",        "care or Chil",
+                "tory,Manu",        "tory or Manu",
+                ",Pet$",            ",Pet Stores",
+                "ium,Spor",         "ium or Spor"
+)
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Premise", dict)
+#   Apply
+df2 <- applyregex(df2, "Premise", dict)
+
+sort(table(df2$Premise), decreasing=TRUE)
+
+dictionary <- c(
+                "Motel,Inn,Etc",        "Motel,Etc",
+                "Out Build or Monument or UnderConst", "Structure (Out Buildings,Monuments,Buildings Under Construction,Etc)",
+                "(\\w),or ",            "\\1 or ",
+                "Contra-Flow or Managed or HOV Lanes", "Contra-Flow or Hov",
+                "Lake or Pond or Waterway or Bayou or River", "Lake or Waterway or Bayou",
+                "Veh\\.", "Vehicle",
+                "Auditor\\.", "Auditoriums",
+                "Blding$", "Building",
+                " or University$", "",
+                "Factory, Manufacturing or Industrial", "Factory or Manufacturing Building",
+                "Factory or Manufacturing or Industrial", "Factory or Manufacturing Building",
+                "Vacant Industrial or Manufacturing or Industrial", "Vacant Industrial or Manufacturing Building",
+                "(\\w),(\\w)",          "\\1 or \\2"
+)
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Premise", dict)
+#   Apply
+df2 <- applyregex(df2, "Premise", dict)
+
+sort(table(df2$Premise), decreasing=TRUE)
+
+
+#   Look for Premise not captured in ptab
+#   fix this to look for exact matches
+
+a <- sort(unique(df2$Premise))
+a <- str_replace(a, "\\(","\\\\(") #  escape parentheses  
+a <- str_replace(a, "\\)","\\\\)")
+for (i in 1:length(a)){
+  if (!any(grepl(paste("\\b",a[i],"\\b",sep=""), as.character(ptab[,1])))){
+    print(a[i])
+  }
+}
+
+
+#  if (!grepl(paste("\\b",a[i],"\\b",sep=""), as.character(ptab[,1]))){
+sort(unique(df2$Premise))
+
+ggplot(data=df2) +
+  geom_bar(aes(x=Premise)) +
+  labs(title=paste("Incidents per premise, District",district)) +
+  coord_flip()
+
+reorder_size <- function(x) {
+  factor(x, levels = names(sort(table(x))))
+}
+ggplot(df2, aes(reorder_size(df2$Premise))) + geom_bar() + coord_flip()
+ggsave(paste("District",district,"_","PremiseFrequency.jpeg", sep=""), device="jpeg", path = paste(plotpath,"District",district,"_material/",sep=""))
+
+a <- left_join(df2,ptab,by="Premise")
+sum(is.na(a$ShortPremise))
+sort(table(a$ShortPremise),decreasing=TRUE)
+df2 <- a
+rm(a)
+
+keepdf2 <- df2
+
+```
+
+```{r Check Block_Range}
+#################################
+# Block_Range
+#################################
+sort(unique(df2$Block_Range))
+
+df2$Block_Range <- str_replace_all(df2$Block_Range, "1\\.1103e\\+006-1\\.1104e\\+006", "")
+df2$Block_Range <- sub("^$","UNK", df2$Block_Range)
+```
+
+*****  stopped here  *****
+
+```{r Check Street}
+#################################
+# Street
+#################################
+
+keepdf2 <- df2
+#  EASTEX FWY, GULF FWY, KATY FWY, NORTH FWY, NORTHWEST FWY,
+#  SOUTHWEST FWY, SOUTH FWY, EAST FWY, N SAM HOUSTON PKWY,
+#  HWY 6 N/S, N/S/E/W SAM HOUSTON PKWY, CROSBY FWY, GRAND PKWY,
+#  PASADENA FWY
+
+#####  Remove extra blanks, periods
+dictionary <- c(
+                "\\.",      "",  # remove periods
+                "\\s{2,}",  " ", # remove extra spaces
+                "^\\s+",    "",  # remove leading spaces
+                "\\s+$",    "",  # remove trailing spaces
+                "\n\\s+",   " ",  # remove carriage returns
+                " APT\\s*#*\\d*$", "", # remove Apartment numbers
+                " APT\\s*#*[A-Z0-9]*$", "", # remove Apartment numbers
+                " APARTMENT\\s*#*[A-Z0-9]*$", "", # remove Apartment numbers
+                " UNIT \\d*",  "", #  remove Unit numbers
+                " NO\\s*\\d+", "", #  more Unit numbers 
+                " SUITE\\s*#*[A-Z0-9]*$", ""  #  SUITE number
+)
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Street", dict)
+#   Apply
+df2 <- applyregex(df2, "Street", dict)
+
+tail(head(sort(unique(df2$Street)),100),100)
+
+dictionary <- c(
+                "^#\\s?[A-Z]? ",  "",  #  more address removal
+                " #\\s?[A-Z]?$",   "",  #  more address removal
+                " #\\s?[0-9]*$",   "",  #  more address removal
+                " [IO]B$",        "",
+                " OBIB",          "",
+                " UTUR",          "",
+                " [IO]B",         "",
+                " STREET$",       " ST",
+                " STREET",        "",
+                "([A-Z ]){1}/([A-Z ]){1}",  "\\1 @ \\2", #  intersections
+                "  ",             " ",   #  remove any double spaces
+                " EXIT$",         "",
+                "^\\d{3,6} ",     "",
+                "#\\w+",          ""
+)
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Street", dict)
+#   Apply
+df2 <- applyregex(df2, "Street", dict)
+
+
+#   clean out numbers after road designations, and shorten
+dictionary <- c(
+                "ST \\d+$",     "ST",
+                "DR \\d+$",     "DR",
+                "RD \\d+$",     "RD",
+                "AVE \\d+$",    "AVE",
+                "BLVD \\d+$",   "BLVD",
+                "AVENUE$",      "AVE",
+                "ROAD$",        "RD",
+                "DRIVE$",       "DR",
+                "LANE$",        "LN",
+                " CIR$",        " CIRCLE",
+                " COURT$",      " CT",
+                "\\sSPDWY$",    " SPEEDWAY"
+)
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Street", dict)
+#   Apply
+df2 <- applyregex(df2, "Street", dict)
+
+tail(head(sort(unique(df2$Street)),100),100)
+
+#   null out nonsense records, like PO Box
+dictionary <- c(
+                "P ?O ?BOX\\s?","",
+                "^BOX\\s?\\d*$","",
+                "POB\\s","",
+                "^PO\\s\\d*$","",
+                "\\sBOX\\s\\d*$",""
+)
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Street", dict)
+df2$Street[grepl("P ?O ?BOX\\s?",df2$Street)] <- NA
+df2$Street[grepl("^BOX\\s?\\d*$",df2$Street)] <- NA
+df2$Street[grepl("POB\\s",df2$Street)] <- NA
+df2$Street[grepl("^PO\\s\\d*$",df2$Street)] <- NA
+df2$Street[grepl("\\sBOX\\s\\d*$",df2$Street)] <- NA
+
+#   Now start tackling the more unique one-offs    
+tail(head(sort(unique(df2$Street)),100),100)
+
+dictionary <- c(
+  "126405 ", "" ,
+  "12814 #A ",    "" ,
+  "1/2 LONG",  "LONG",
+  "14555",     "",
+  " LT 1",     "",
+  "2 LUCKY",     "LUCKY",
+  "B NORTH",     "NORTH",
+  "^\\d+O\\d* ", "",
+  " ROAD$", " RD",
+  "^ ", ""
+)
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Street", dict)
+#   Apply
+df2 <- applyregex(df2, "Street", dict)
+tail(head(sort(unique(df2$Street)),100),100)
+
+tail(head(sort(unique(df2$Street)),200),100)
+dictionary <- c(
+                " LOT \\d*$",     "",
+                "RIDGE \\d*$",    "RIDGE",
+                " RD ST",         " RD",
+                "INTERNATIONAL",  "INTERCONTINENTAL",
+                " CMN UNIT",        ""
+)
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Street", dict)
+#   Apply
+df2 <- applyregex(df2, "Street", dict)
+tail(head(sort(unique(df2$Street)),200),100)
+
+tail(head(sort(unique(df2$Street)),300),100)
+dictionary <- c(
+                " 15305",       "",
+                "BOULEVARD",    "BLVD",
+                "COM MONS",     "COMMONS",
+                " ENTR?$",      "",
+                " 1960 SH ",    " 1960 @ SH ",
+                "1960 WEST",    "1960",
+                " SR$",         "",
+                "FILEDSTONE",   "FIELDSTONE"
+)
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Street", dict)
+#   Apply
+df2 <- applyregex(df2, "Street", dict)
+df2$Street[grepl("^1$",df2$Street)] <- NA 
+df2$Street[grepl("^DALLAS LOVE FIELD AIRPORT$",df2$Street)] <- NA 
+df2$Street[grepl("HOMELESS ",df2$Street)] <- NA 
+tail(head(sort(unique(df2$Street)),300),100)
+
+tail(head(sort(unique(df2$Street)),400),100)
+dictionary <- c(
+                " 508$",        "",
+                " 224T",        "",
+                " LANE \\d*$",  " LN",
+                "BLV 2703",     "BLVD",
+                " 35 1/2",      "",
+                "HOLLISTEROB",  "HOLLISTER",
+                " EN$",         "",
+                " UNT$",         "",
+                "([A-C,EFG,I-L,N-R,T-X,Z]) \\d{2,6}$",   "\\1"
+)
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Street", dict)
+#   Apply
+df2 <- applyregex(df2, "Street", dict)
+tail(head(sort(unique(df2$Street)),400),100)
+
+tail(head(sort(unique(df2$Street)),500),100)
+dictionary <- c(
+                "FREEWAY$",      "FWY"
+)
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Street", dict)
+#   Apply
+df2 <- applyregex(df2, "Street", dict)
+tail(head(sort(unique(df2$Street)),500),100)
+
+tail(head(sort(unique(df2$Street)),600),100)
+dictionary <- c(
+                " 3A217",    "",
+                "NGESSNER",  "N GESSNER",
+                " 100 DR",   "",
+                "FRWY",      "FWY",
+                " ENTR RAMP", "",
+                " S SERV",   " FWY"
+)
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Street", dict)
+#   Apply
+df2 <- applyregex(df2, "Street", dict)
+df2$Street[grepl("^UNK$",df2$Street)] <- NA 
+tail(head(sort(unique(df2$Street)),600),100)
+
+tail(head(sort(unique(df2$Street)),700),100)
+dictionary <- c(
+                " RDR",          " RD",
+                "LANE TRLR 0",   "LN",
+                " AT ",          " @ ",
+                "WEST FOR",      "W FOR",
+                "WEST HOL",      "W HOL",
+                "PKWY\\s*[NSEW]$","PKWY"
+)
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Street", dict)
+#   Apply
+df2 <- applyregex(df2, "Street", dict)
+df2$Street[grepl("^PR$",df2$Street)] <- NA 
+
+tail(head(sort(unique(df2$Street)),700),100)
+
+tail(head(sort(unique(df2$Street)),800),100)
+dictionary <- c(
+                "RIDGE CREST",   "RIDGECREST",
+                "ROX BURGH",     "ROXBURGH",
+                "ROXBOUGH",      "ROXBURGH",
+                "AVENUE SU",      "AVE"
+)
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Street", dict)
+#   Apply
+df2 <- applyregex(df2, "Street", dict)
+
+tail(head(sort(unique(df2$Street)),800),100)
+
+tail(head(sort(unique(df2$Street)),900),100)
+dictionary <- c(
+                "STATE HIGHWAY",   "SH"
+)
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Street", dict)
+#   Apply
+df2 <- applyregex(df2, "Street", dict)
+df2$Street[grepl("^UNKNOWN$",df2$Street)] <- NA 
+
+tail(head(sort(unique(df2$Street)),900),100)
+tail(head(sort(unique(df2$Street)),1000),100)
+dictionary <- c(
+                "W 6801 FM 1960 RD W",   "FM 1960",
+                "WESTHIEMER",            "WESTHEIMER",
+                "^WEST ",                "W ",
+                "^WFM",                  "W FM",
+                "FM(\\d)",               "FM \\1",
+                "WGREENS",               "W GREENS",
+                "WILLIOW",               "WILLOW",
+                "DR [NS]$",              "DR",
+                "WLITTLE",               "W LITTLE",
+                "WTIDWELL",              "W TIDWELL",
+                "^W RD",                  "WEST RD",
+                " NORTH$",               "",
+                "TIDWELL A",             "TIDWELL"
+)
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Street", dict)
+#   Apply
+df2 <- applyregex(df2, "Street", dict)
+df2$Street[grepl("^UNKNOWN$",df2$Street)] <- NA 
+
+tail(head(sort(unique(df2$Street)),1000),100)
+tail(head(sort(unique(df2$Street)),1100),100)
+dictionary <- c(
+                "WILLBROOK",             "WILLOWBROOK",
+                " 8000 A",               "",
+                "OKACE",                 "PLACE"
+)
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Street", dict)
+#   Apply
+df2 <- applyregex(df2, "Street", dict)
+
+tail(head(sort(unique(df2$Street)),1100),100)
+
+#   If address is in Street field, extract it and create a block range from it
+
+maskaddr <- grepl("^\\d{3,5}\\s",df2$Street)
+addrs <- str_extract(df2$Street[maskaddr],"^\\d{3,5}\\s")
+addrs <- as.integer((as.integer(addrs)/100))*100
+addrs <- paste(as.character(addrs), as.character(addrs+99),sep="-")
+df2$Block_Range[maskaddr] <- addrs
+df2$Street <- str_replace_all(df2$Street,"^\\d{3,}\\s","")
+#   Done
+
+#   Put ST/RD/DR/CT/BLVD/LN/AVE/CIRCLE/WAY into Type field and remove from Street field
+matchstring <- c(" ST$| RD$| DR$| LN$| WAY$| BLVD$| CIRCLE$| CT$| PL$| CIR$| AVE$")
+maska <- grepl(matchstring, df2$Street)
+masktype <- grepl("-", df2$Type)
+matched_values <- str_extract(df2$Street[maska&masktype],matchstring)
+df2$Type[maska&masktype] <- matched_values  #  put value into Type field
+df2$Street[maska&masktype] <- sub(matchstring, "", df2$Street[maska&masktype])  #  remove value from Street field
+
+#   clean up extra space from Type field
+df2$Type <- str_replace(df2$Type,"^ ","")
+
+maska <- grepl(matchstring, df2$Street)
+matched_values <- str_extract(df2$Street[maska],matchstring)
+df2$Type[maska] <- matched_values  #  put value into Type field
+df2$Street[maska] <- sub(matchstring, "", df2$Street[maska])  #  remove value from Street field
+
+tail(head(sort(unique(df2$Street)),100),100)
+
+####   Look for some more anomalies
+dictionary <- c(
+                "CAMBELL",       "CAMPBELL",
+                "^EST ",         "E ",
+                "HOLISTER",      "HOLLISTER",
+                "^NORTH ",       "N ",
+                "N SH 6 HWY",    "HWY 6 N",
+                "N SH 6",        "HWY 6 N",
+                " G110",         "",
+                " HWY$",         "",
+                "W34TH",         "W 34TH"
+)
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Street", dict)
+#   Apply
+df2 <- applyregex(df2, "Street", dict)
+
+#####    work on highways separately
+#   Goals:
+#  EASTEX FWY, GULF FWY, KATY FWY, NORTH FWY, NORTHWEST FWY,
+#  SOUTHWEST FWY, SOUTH FWY, EAST FWY, N SAM HOUSTON PKWY,
+#  HWY 6 N/S, N/S/E/W SAM HOUSTON PKWY, CROSBY FWY, GRAND PKWY,
+#  PASADENA FWY
+
+maskHiway <- grepl("^IH |^FM |^TX |^I |HWY|^US |^SPUR |^COUNTY |^LAKES |^SH ",df2$Street)
+
+#     Work on Direction indicators  and the Loop (N,S,E,W). LOOP wants spelled out
+#     and allow for North Fwy, South Fwy, and East Fwy
+dictionary <- c(
+                " LP ",          " LOOP ",
+                " LP$",          " LOOP",
+                "^IH 610$",      "LOOP",
+                " SVC$",         ""
+)
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Street", dict)
+#   Apply
+df2 <- applyregex(df2, "Street", dict)
+
+maskloop <- grepl(" LOOP", df2$Street)
+maskfwy <- grepl("FWY", df2$Type)
+maskfwy2 <- grepl(" FWY", df2$Street)
+maskfwy <- maskfwy2|maskfwy
+sort(unique(df2$Street[maskloop]))
+#   Clean up freeways: "NORTH LOOP" is the canonical goal 
+df2$Street[maskloop] <- str_replace(df2$Street[maskloop], "EAST$","E")
+df2$Street[maskloop] <- str_replace(df2$Street[maskloop], "WEST$","W")
+df2$Street[maskloop] <- str_replace(df2$Street[maskloop], "NORTH$","N")
+df2$Street[maskloop] <- str_replace(df2$Street[maskloop], "SOUTH$","S")
+df2$Street[maskloop] <- str_replace(df2$Street[maskloop], " E$","")
+df2$Street[maskloop] <- str_replace(df2$Street[maskloop], " W$","")
+df2$Street[maskloop] <- str_replace(df2$Street[maskloop], " N$","")
+df2$Street[maskloop] <- str_replace(df2$Street[maskloop], " S$","")
+df2$Street[maskloop] <- str_replace(df2$Street[maskloop], "^E ","EAST ")
+df2$Street[maskloop] <- str_replace(df2$Street[maskloop], "^W ","WEST ")
+df2$Street[maskloop] <- str_replace(df2$Street[maskloop], "^N ","NORTH ")
+df2$Street[maskloop] <- str_replace(df2$Street[maskloop], "^S ","SOUTH ")
+df2$Street <- str_replace(df2$Street, "WEST LOOP SOUTH LOOP","WEST LOOP")
+sort(unique(df2$Street[maskloop]))
+
+#   settle on Katy Fwy, Gulf Fwy, North, East, South FWY's, and LOOP instead of 610,
+dictionary <- c(
+                "HWY 69",          "SOUTHWEST FWY", # only this district
+                "IH 10",           "KATY FWY", # ditto
+                "IH 610",          "LOOP"
+)
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Street", dict)
+#   Apply
+df2 <- applyregex(df2, "Street", dict)
+
+#   use suffix to place loop as either NORTH or WEST
+masksuffix <- grepl("N", df2$Suffix)
+maskloop <- grepl("^LOOP$", df2$Street)
+df2$Street[masksuffix&maskloop] <- "NORTH LOOP"
+masksuffix <- grepl("W", df2$Suffix)
+maskloop <- grepl("^LOOP$", df2$Street)
+df2$Street[masksuffix&maskloop] <- "WEST LOOP"
+masksuffix <- grepl("S", df2$Suffix)
+maskloop <- grepl("^LOOP$", df2$Street)
+df2$Street[masksuffix&maskloop] <- "SOUTH LOOP"
+masksuffix <- grepl("E", df2$Suffix)
+maskloop <- grepl("^LOOP$", df2$Street)
+df2$Street[masksuffix&maskloop] <- "EAST LOOP"
+
+#   various freeways
+
+dictionary <- c(
+                "^S FWY$","SOUTH FWY", # 288
+                "^SH 288\\s?\\w*","SOUTH FWY", # 288
+                "^HWY 59$","SOUTHWEST FWY", #  US 59/ I-69
+                "^NORTHWEST$","NORTHWEST FWY", #  290
+                "^US 290 FWY$","NORTHWEST FWY", #  290
+                "^US 290$","NORTHWEST FWY", #  290
+                "^NW FWY$","NORTHWEST FWY", #  290
+                "^NW$","NORTHWEST FWY", #  290
+                "^W KATY FWY FWY$","KATY FWY", #  290
+                "^HWY 6 SOUTH$","S HWY 6", #  Hwy 6
+                "^HWY 6 N$","N HWY 6" #  Hwy 6
+)
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Street", dict)
+#   Apply
+df2 <- applyregex(df2, "Street", dict)
+#     Hwy 6
+maska <- grepl("S",df2$Suffix)
+df2$Street[maska] <- str_replace(df2$Street[mask],"^HWY 6$","S HWY 6")
+
+#   
+maska <- grepl("FWY",df2$Type)
+maskout <- grepl("FWY",df2$Street)
+unique(df2$Street[maska&!maskout])
+df2$Street[maska&!maskout] <- paste(df2$Street[maska&!maskout],"FWY", sep=" ")
+
+dictionary <- c(
+                "^US 59 FWY$","SOUTHWEST FWY", # 59
+                "^US 59$","SOUTHWEST FWY", # 59
+                "^SW FWY$","SOUTHWEST FWY", # 59
+                "^SW$","SOUTHWEST FWY", # 59
+                "^IH 45$","GULF FWY", 
+                "^GULF$","GULF FWY", 
+                "^NORTH$","NORTH FWY", 
+                "^SOUTH$","SOUTH FWY", 
+                " ENTR "," ENT ", 
+                "SAM HOUSTON PARKWAY","SAM HOUSTON PKWY", 
+                "^SOUTHWEST$","SOUTHWEST FWY"
+                ) 
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Street", dict)
+#   Apply
+df2 <- applyregex(df2, "Street", dict)
+
+#############   done with freeways
+
+keepdf2 <- df2
+
+####################  One more check
+tail(head(sort(unique(df2$Street)),100),100)
+dictionary <- c(
+                "^SOUTH ","S",
+                " PARKWAY$"," PKWY",
+                "^SAM HOUSTON$","SAM HOUSTON PKWY",
+                "W SAM HOUSTON$","W SAM HOUSTON PKWY"
+                ) 
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Street", dict)
+#   Apply
+df2 <- applyregex(df2, "Street", dict)
+
+
+########   Deal with Suffixes (N,S,E,W)
+mask <- grepl("N",df2$Suffix)
+maskout <- grepl("KATY|SAM |FWY|LOOP|EAST|HWY|PKWY|^N ", df2$Street)
+sort(unique(df2$Street[mask&!maskout]))
+
+df2$Street[mask&!maskout] <- paste("N",df2$Street[mask&!maskout],sep=" ")
+
+mask <- grepl("S",df2$Suffix)
+maskout <- grepl("KATY|FWY|LOOP|EAST|HWY|^S ", df2$Street)
+sort(unique(df2$Street[mask&!maskout]))
+df2$Street[mask&!maskout] <- paste("S",df2$Street[mask&!maskout],sep=" ")
+
+mask <- grepl("E",df2$Suffix)
+maskout <- grepl("KATY|FWY|LOOP|EAST|NORTH|HWY|^E ", df2$Street)
+sort(unique(df2$Street[mask&!maskout]))
+df2$Street[mask&!maskout] <- paste("E",df2$Street[mask&!maskout],sep=" ")
+
+mask <- grepl("W",df2$Suffix)
+maskout <- grepl("KATY|FWY|LOOP|EAST|NORTH|^W ", df2$Street)
+sort(unique(df2$Street[mask&!maskout]))
+df2$Street[mask&!maskout] <- paste("W",df2$Street[mask&!maskout],sep=" ")
+
+df2$Street[grepl("^[NSEW] NA$",df2$Street)] <- NA
+keepdf2 <- df2
+
+```
+
+```{r Check Type}
+#################################
+# Type
+#################################
+
+sort(unique(df2$Type))
+df2$Type <- str_replace_all(df2$Type," ","") 
+df2$Type <- str_replace_all(df2$Type,"FWY SER","SER") 
+df2$Type <- str_replace_all(df2$Type,"FWYSER","SER") 
+df2$Type <- str_replace_all(df2$Type,"^CIR$","CIRCLE") 
+```
+
+```{r save the results}
+#################################
+# Save the results
+#################################
+
+saveRDS(df2, file=paste("~/Dropbox/CrimeStats/District",district,"CleanData.rds",sep=""))
+```
+
