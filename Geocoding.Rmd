@@ -36,7 +36,7 @@ been done.
 # then clear up to only unique values and split each record in two, one for each
 # end of the block. Output will be a datafile of keys and addresses.
 
-df = readRDS("~/Dropbox/CrimeStats/District1aCleanData.rds")
+df = readRDS("~/Dropbox/CrimeStats/District4fCleanData.rds")
 geotable <- readRDS("~/Dropbox/CrimeStats/GeoTable.rds")
 
 #   Build a new dataframe with addresses in it
@@ -82,6 +82,7 @@ Finally save the new GeoTable.
 latlongs <- data.frame(types=character(),
                  Latitude=numeric(), 
                  Longitude=numeric(), 
+                 type=character(),
                  StreetName=character(),
                  LocType=character(),
                  stringsAsFactors=FALSE) 
@@ -89,10 +90,10 @@ latlongs <- data.frame(types=character(),
 #   Function for pulling fields out of nested lists returned by geocode
 getfields <- function(x){
               if(length(x$results)>0)  {data.frame(
-              types=x$results[[1]]["types"][1],
               Latitude=as.numeric(x$results[[1]]$geometry$location["lat"]),
               Longitude=as.numeric(x$results[[1]]$geometry$location["lng"]),
-              StreetName=x$results[[1]]["formatted_address"],
+              types=x$results[[1]]["types"][1],
+              StreetName=x$results[[1]]$formatted_address,
               LocType=x$results[[1]]$geometry$location_type,
               stringsAsFactors = FALSE)
               } else if (exists("x$status") && x["status"]=="ZERO_RESULTS"){
@@ -123,19 +124,20 @@ workingset$type2 <- NA
 workingset$StreetName2 <- NA
 workingset$LocType2 <- NA
 
-workingset$lon1[1:2400] = latlongs$Longitude
-workingset$lat1[1:2400] = latlongs$Latitude
-workingset$type[1:2400] = latlongs$types
-workingset$StreetName[1:2400] = latlongs$StreetName
-workingset$LocType[1:2400] = latlongs$LocType
+workingset$lon1[1:1603] = latlongs$Longitude[1:1603]
+workingset$lat1[1:1603] = latlongs$Latitude[1:1603]
+workingset$type[1:1603] = latlongs$types[1:1603]
+workingset$StreetName[1:1603] = latlongs$StreetName[1:1603]
+workingset$LocType[1:1603] = latlongs$LocType[1:1603]
 
 ```
 
 Second pass to catch more lat longs
+***********   23 Feb 8:45 PM skip to lat2 section
 
 ```{r get more lat longs from google}
 
-##### Run on 13th after 9PM 
+geocodeQueryCheck()
 Addresses <- paste(workingset$Add1[2401:4800], workingset$Street[2401:4800])
 
 AllLatLong <- geocode(Addresses, output="all") # geocode 2400 addresses
@@ -172,20 +174,20 @@ First pass on Addr2
 
 ```{r get more lat longs from google}
 
-##### Run on 15th after 9:30PM
+##### Run on 23rd after 8:45PM
 geocodeQueryCheck()
 
-Addresses <- paste(workingset$Add2[1:2400], workingset$Street[1:2400])
+Addresses <- paste(workingset$Add2[1:1603], workingset$Street[1:1603])
 
 AllLatLong <- geocode(Addresses, output="all") # geocode 2400 addresses
 
 latlongs <- map_df(AllLatLong, getfields) # extract desired fields
 
-workingset$lon2[1:2400] = latlongs$Longitude
-workingset$lat2[1:2400] = latlongs$Latitude
-workingset$type2[1:2400] = latlongs$types
-workingset$StreetName2[1:2400] = latlongs$StreetName
-workingset$LocType2[1:2400] = latlongs$LocType
+workingset$lon2[1:1603] = latlongs$Longitude
+workingset$lat2[1:1603] = latlongs$Latitude
+workingset$type2[1:1603] = latlongs$types
+workingset$StreetName2[1:1603] = latlongs$StreetName
+workingset$LocType2[1:1603] = latlongs$LocType
 
 ```
 
@@ -368,6 +370,11 @@ workingset <- cbind(workingset, blks, stringsAsFactors=FALSE)
 
 newGeotable <- workingset %>% select(Address, Street, Block_Range, Longitude, Latitude, StreetName)
 names(newGeotable) <- c("Address", "Street", "Block_Range","Longitude", "Latitude", "GoogleName")
+
+#   Append to old geotable
+newGeotable <- bind_rows(geotable, newGeotable)
+
+#   Save
 saveRDS(newGeotable, "~/Dropbox/CrimeStats/GeoTable.rds")
 
 ```
