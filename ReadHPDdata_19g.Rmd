@@ -972,13 +972,15 @@ df2 <- applyregex(df2, "Street", dict)
 
 keepdf2 <- df2
 
-###########################   stopped here 2/26
 ####################  One more check
 tail(head(sort(unique(df2$Street)),100),100)
 dictionary <- c(
                 "BEECHNUT C","BEECHNUT",
                 "BEECHNUTOB","BEECHNUT",
                 " ST D100","",
+                "HOUSTONPKWY", "HOUSTON PKWY",
+                "PKWY FWY", "PKWY",
+                "^SAM HOUSTON$", "SAM HOUSTON PKWY",
                 "FORUMPARK","FORUM PARK"
                 ) 
 dict <- Makedict(dictionary)
