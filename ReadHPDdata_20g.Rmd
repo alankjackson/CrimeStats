@@ -1081,9 +1081,9 @@ df2$Street[maska] <- str_replace(df2$Street[mask],"^HWY 6$","S HWY 6")
 
 #   
 maska <- grepl("FWY",df2$Type)
-maskout <- grepl("FWY",df2$Street)
-unique(df2$Street[maska&!maskout])
-df2$Street[maska&!maskout] <- paste(df2$Street[maska&!maskout],"FWY", sep=" ")
+maskout <- grepl("KATY$",df2$Street)
+unique(df2$Street[maska&maskout])
+df2$Street[maska&maskout] <- paste(df2$Street[maska&maskout],"FWY", sep=" ")
 
 dictionary <- c(
                 "^US 59 FWY$","SOUTHWEST FWY", # 59
@@ -1097,6 +1097,7 @@ dictionary <- c(
                 "^SOUTH$","SOUTH FWY", 
                 " ENTR "," ENT ", 
                 "SAM HOUSTON PARKWAY","SAM HOUSTON PKWY", 
+                "SAM HOUSTON$","SAM HOUSTON PKWY", 
                 "BW 8","SAM HOUSTON PKWY", 
                 "SAM HOU PKWY","SAM HOUSTON PKWY", 
                 "PKWY SOUTH", "PKWY",
@@ -1116,13 +1117,10 @@ keepdf2 <- df2
 ####################  One more check
 tail(head(sort(unique(df2$Street)),100),100)
 dictionary <- c(
-                "BEECHNUT C","BEECHNUT",
-                "BEECHNUTOB","BEECHNUT",
-                " ST D100","",
-                "HOUSTONPKWY", "HOUSTON PKWY",
-                "PKWY FWY", "PKWY",
-                "^SAM HOUSTON$", "SAM HOUSTON PKWY",
-                "FORUMPARK","FORUM PARK"
+                " $","",
+                "I 10 ","KATY FWY",
+                "I 45","NORTH FWY",
+                "HOUSTON [WS]$", "HOUSTON PKWY"
                 ) 
 dict <- Makedict(dictionary)
 #   test them first
@@ -1165,6 +1163,7 @@ keepdf2 <- df2
 
 sort(unique(df2$Type))
 df2$Type <- str_replace_all(df2$Type," ","") 
+df2$Type <- str_replace_all(df2$Type,"-","") 
 df2$Type <- str_replace_all(df2$Type,"FWY SER","SER") 
 df2$Type <- str_replace_all(df2$Type,"FWYSER","SER") 
 df2$Type <- str_replace_all(df2$Type,"^CIR$","CIRCLE") 
