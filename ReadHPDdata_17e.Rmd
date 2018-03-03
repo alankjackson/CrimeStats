@@ -153,6 +153,7 @@ if ((yr=="09"&&mon %in% c("jan","feb","mar","apr","may","jun","jul","sep","nov")
     
     # some hour fields are borked with character data
     tempfile$Hour <- as.character(tempfile$Hour)
+    tempfile$Beat <- as.character(tempfile$Beat)
     
     # if an early file, replace premise codes with premise descriptions
     if (premiseflag){
@@ -169,14 +170,15 @@ if ((yr=="09"&&mon %in% c("jan","feb","mar","apr","may","jun","jul","sep","nov")
 
 ```
 
-#     August 2017 district files missing, so read individual beat files instead
+#     August 2017 district files missing, so read individual beat files instead. Oops, all August files missing.
+#     February 2017 also missing
 
 ```{r read in August 2017 by beat}
-
+for (mm in c("feb")) {
 for (beat in beats)
     {
     
-    url = paste("http://www.houstontx.gov/police/cs/stats2017/aug17/aug17",beat,".htm", sep="")
+    url = paste("http://www.houstontx.gov/police/cs/stats2017/",mm,"17/",mm,"17",beat,".htm", sep="")
     print(url)
     
 
@@ -195,10 +197,21 @@ for (beat in beats)
     
     # some hour fields are borked with character data
     tempfile$Hour <- as.character(tempfile$Hour)
+    tempfile$Beat <- as.character(tempfile$Beat)
     
     # append to df2
     df2 <- bind_rows(df2, tempfile)
   }
+}
+```
+```{r repair beat field since it was misinterpreted as a float}
+
+df2$Beat <- str_replace(df2$Beat, "\\.", "")
+df2$Beat <- str_replace(df2$Beat, "\\+", "")
+df2$Beat <- str_replace(df2$Beat, "1$", "0")
+df2$Beat <- str_replace(df2$Beat, "e", "E")
+
+sort(unique(df2$Beat))
 
 ```
 
@@ -286,6 +299,7 @@ df2 <- applyregex(df2, "Offense_Type", dict)
 #   One record has an incident type of "1". We'll just delete that record.
 df2 <- df2[!df2$Offense_Type=="1",]
 
+sort(unique(df2$Offense_Type))
 #   Bar chart of various incidents
 ggplot(data=df2) +
   geom_bar(aes(x=Offense_Type)) +
@@ -487,8 +501,6 @@ for (i in 1:length(a)){
   }
 }
 
-
-#  if (!grepl(paste("\\b",a[i],"\\b",sep=""), as.character(ptab[,1]))){
 sort(unique(df2$Premise))
 
 ggplot(data=df2) +
@@ -534,7 +546,7 @@ df2$Type <- str_replace_all(df2$Type,"FWY SER","FWY")
 df2$Type <- str_replace_all(df2$Type,"FWYSER","FWY") 
 df2$Type <- str_replace_all(df2$Type,"^CIR$","CIRCLE") 
 ```
-
+***********************   stopped here Friday Mar 2
 ```{r Check Street}
 #################################
 # Street
