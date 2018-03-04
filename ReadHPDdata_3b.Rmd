@@ -13,7 +13,7 @@ library("lubridate") # handle dates
 
 PremiseTable = readRDS("/home/ajackson/mirrors/ajackson/crime/data/PremiseTable.rds")
 #   Read in translation table Premise to ShortPremise
-ptab <- read.csv("~/mirrors/ajackson/crime/data/ptable.csv")
+ptab <- read.csv("~/mirrors/ajackson/crime/data/ptable.csv", stringsAsFactors = FALSE)
 
 plotpath <- "/home/ajackson/Dropbox/CrimeStats/District_material/"
 
@@ -81,7 +81,7 @@ colnames(premise)[1] <- "Premise"
 year_range = str_pad(as.character(9:17),2,pad="0")
 months = tolower(month.abb[1:12])
 district <- "3b"  # Midwest Patrol Division
-beats <- c("3b10","3b20","3b30","3b40", "3b50")
+beats <- c("3b10","3b30","3b40", "3b50")
 
 
 # initialize empty data frame
@@ -210,6 +210,7 @@ df2$Beat <- str_replace(df2$Beat, "\\+", "")
 df2$Beat <- str_replace(df2$Beat, "1$", "0")
 df2$Beat <- str_replace(df2$Beat, "e", "E")
 
+df2$Beat <- str_replace(df2$Beat, "'", "")
 sort(unique(df2$Beat))
 
 ```
@@ -545,7 +546,7 @@ df2$Type <- str_replace_all(df2$Type,"FWY SER","FWY")
 df2$Type <- str_replace_all(df2$Type,"FWYSER","FWY") 
 df2$Type <- str_replace_all(df2$Type,"^CIR$","CIRCLE") 
 ```
-***********************   stopped here Friday Mar 2
+***********************   stopped here Saturday Mar 3
 ```{r Check Street}
 #################################
 # Street
