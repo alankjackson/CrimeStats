@@ -18,11 +18,6 @@ gmap = get_map(location=c(-95.4142, 29.7907), source="google",zoom=12)
 googleproj4 <- "+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext  +no_defs"
 googlecrs <- "4326"
 
-testgeocode <- function(x){
-              if(length(x$results)==0){
-                print(paste("--->", x$status))
-              }
-}
 
 knitr::opts_chunk$set(echo = TRUE)
 ```
@@ -40,7 +35,7 @@ df = readRDS("~/Dropbox/CrimeStats/District10hCleanData.rds")
 geotable <- readRDS("~/Dropbox/CrimeStats/GeoTable.rds")
 
 #   Build a new dataframe with addresses in it
-workingset <- data.frame(paste(df$Block_Range,df$Street,", Houston, TX"), stringsAsFactors = FALSE)
+workingset <- data.frame(paste(df$Block_Range,df$Street,df$Type", Houston, TX"), stringsAsFactors = FALSE)
 colnames(workingset)[1] = "Address"
 
 workingset$Block_Range <- df$Block_Range
@@ -98,10 +93,16 @@ getfields <- function(x){
               StreetName=x$results[[1]]$formatted_address,
               LocType=x$results[[1]]$geometry$location_type,
               stringsAsFactors = FALSE)
-              } else if (exists("x$status") && x["status"]=="ZERO_RESULTS"){
-                data.frame(types="ZERO_RESULTS",Latitude=NA,Longitude=NA, StreetName=NA,LocType=NA,stringsAsFactors = FALSE)
+              } else if ("status" %in% names(x) && x$status=="ZERO_RESULTS"){
+                data.frame(types=x$status,Latitude=NA,Longitude=NA, StreetName=NA,LocType=NA,stringsAsFactors = FALSE)
               } else{
                 data.frame(types=NA,Latitude=NA,Longitude=NA, StreetName=NA,LocType=NA,stringsAsFactors = FALSE)
+              }
+}
+
+testgeocode <- function(x){
+              if(length(x$results)==0){
+                print(paste("--->", x$status))
               }
 }
 #   initialize workingset first time through with new columns
