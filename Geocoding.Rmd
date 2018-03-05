@@ -126,7 +126,7 @@ Work on ADDR1 iteratively until done
 #   Iterate on ADDR1 until exhausted
 #####################################################
 geocodeQueryCheck()
-mask1 <- is.na(workingset$lon1) | is.na(workingset$lat1)& !(workingset$type == "ZERO_RESULTS" & !is.na(workingset$LocType))
+mask1 <- (is.na(workingset$lon1) | is.na(workingset$lat1))& ((workingset$type != "ZERO_RESULTS") | is.na(workingset$type))
 
 sum(mask1)
 limit <- min(geocodeQueryCheck(), sum(mask1))
@@ -155,8 +155,9 @@ Work on ADDR2 iteratively until done
 #####################################################
 #   Iterate on ADDR2 until exhausted
 #####################################################
+
 geocodeQueryCheck()
-mask1 <- is.na(workingset$lon2) | is.na(workingset$lat2)& !(workingset$type == "ZERO_RESULTS" & !is.na(workingset$LocType))
+mask1 <- (is.na(workingset$lon2) | is.na(workingset$lat2))& ((workingset$type2 != "ZERO_RESULTS") | is.na(workingset$type2))
 
 sum(mask1)
 limit <- min(geocodeQueryCheck(), sum(mask1))
