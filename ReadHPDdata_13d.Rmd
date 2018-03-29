@@ -635,7 +635,7 @@ dictionary <- c(
                 "P ?O ?BOX\\s?","",
                 "^BOX\\s?\\d*$","",
                 "POB\\s","",
-                "PO BX","",
+                "P *O BX","",
                 "^PO\\s\\d*$","",
                 "HOMELESS","",
                 "\\sBOX\\s\\d*$",""
@@ -646,7 +646,7 @@ testregex(df2, "Street", dict)
 df2$Street[grepl("P ?O ?BOX\\s?",df2$Street)] <- NA
 df2$Street[grepl("^BOX\\s?\\d*$",df2$Street)] <- NA
 df2$Street[grepl("POB\\s",df2$Street)] <- NA
-df2$Street[grepl("PO BX",df2$Street)] <- NA
+df2$Street[grepl("P *O BX",df2$Street)] <- NA
 df2$Street[grepl("^PO\\s\\d*$",df2$Street)] <- NA
 df2$Street[grepl("\\sBOX\\s\\d*$",df2$Street)] <- NA
 
@@ -670,6 +670,7 @@ dictionary <- c(
                 " CIR$",        " CIRCLE",
                 " COURT$",      " CT",
                 " PLACE$",   " PL",
+                "PARK PL$",   "PARK PLACE",
                 "COUNTY RD",   "CR",
                 " PVT ",        " ",
                 " UNIT$",       "",
@@ -721,16 +722,13 @@ tail(head(sort(unique(df2$Street)),100),100)
 tail(head(sort(unique(df2$Street)),100),100)
 
 dictionary <- c(
-  "^1$",      "" ,
+  "^14091$",      "" ,
   "^1/2 ",     "" ,
   "^1 2 ",     "" ,
   "^[25] ",     "",
-  "^59 ",     "EASTEX FWY",
-  "6101 ",     "",
-  "^A ",     "",
-  "^B$",     "",
-  "^AVE$",     "",
-  "122O ",     ""
+  "^3605A ",     "",
+  "A CHAFFIN", "CHAFFIN",
+  " EXIT RAMP",     ""
 )
 dict <- Makedict(dictionary)
 #   test them first
@@ -742,9 +740,9 @@ tail(head(sort(unique(df2$Street)),100),100)
 
 tail(head(sort(unique(df2$Street)),200),100)
 dictionary <- c(
-  "BILLOXI", "BILOXI",
-  "CANIFF", "CANNIFF",
-  " 16$", ""
+  "BROADWAY \\d*$", "BROADWAY",
+  " BOX C", "",
+  "WAYN$", "WAY"
 )
 dict <- Makedict(dictionary)
 #   test them first
@@ -755,10 +753,11 @@ tail(head(sort(unique(df2$Street)),200),100)
 
 tail(head(sort(unique(df2$Street)),300),100)
 dictionary <- c(
-                "FWY@", "FWY @",
-                " LP", " LOOP",
+                "^E$", "EAST LOOP",
+                " LP$", " LOOP",
                 "FRWY", "FWY",
-                "BLVD E", "BLVD",
+                "FOLKES", "FOLKS",
+                "GLEN CREST", "GLENCREST",
                 " LP ", " LOOP "
 )
 dict <- Makedict(dictionary)
@@ -770,16 +769,16 @@ tail(head(sort(unique(df2$Street)),300),100)
 
 tail(head(sort(unique(df2$Street)),400),100)
 dictionary <- c(
-                " TER$",   " TERRACE",
-                " SERV$", "",
-                " \\(SERVICE RD\\)", "",
-                "GULFY FWY 5210", "GULF FWY",
-                " I @ B$", "",
-                " IBOB", "",
-                "IH 45", "GULF",
-                "^IH 610", "EAST LOOP",
-                "^S IH 610 FWY E", "EAST LOOP",
-                " IB ", " "
+                "GLEN LOCH",   "GLENLOCH",
+                "GLENSCOTT", "GLENSCOT",
+                "GLEN VISTA", "GLENVISTA",
+                " 20$", "",
+                "GULFFWY", "GULF FWY",
+                "GULFF RWY", "GULF FWY",
+                "FWY SR$", "FWY",
+                "^IH 45$", "GULF FWY",
+                "^S IH 45 FWY", "GULF FWY",
+                "IH 610", "SOUTH LOOP"
 )
 dict <- Makedict(dictionary)
 #   test them first
@@ -788,10 +787,14 @@ testregex(df2, "Street", dict)
 df2 <- applyregex(df2, "Street", dict)
 tail(head(sort(unique(df2$Street)),400),100)
 
+#   take care of special case of gulf street
+maskgulf <- grepl("^GULF$", df2$Street)
+masktype <- grepl("^$", df2$Type)
+df2$Street[maskgulf&masktype] <- "GULF ST"
+
 tail(head(sort(unique(df2$Street)),500),100)
 dictionary <- c(
-  " 7$", "",
-  "^JW", "J W"
+  "KATYFREEWAY 1111", "KATY FWY"
 )
 dict <- Makedict(dictionary)
 #   test them first
@@ -802,9 +805,14 @@ tail(head(sort(unique(df2$Street)),500),100)
 
 tail(head(sort(unique(df2$Street)),600),100)
 dictionary <- c(
-                "MIRA GLEN",    "MIRAGLEN",
-                "CEASAR ", "CESAR ",
-                "PARK PL$", "PARK PLACE"
+                "^LOOP$",    "SOUTH LOOP",
+                "SLOOP", "SOUTH LOOP",
+                "^LOOP E$", "SOUTH LOOP",
+                "^LOOP EAST", "SOUTH LOOP",
+                "^LOOP FWY", "SOUTH LOOP",
+                "MLK", "MARTIN LUTHER KING",
+                "LEY \\d*$", "LEY",
+                "^N$", ""
 )
 dict <- Makedict(dictionary)
 #   test them first
@@ -816,7 +824,8 @@ tail(head(sort(unique(df2$Street)),600),100)
 
 tail(head(sort(unique(df2$Street)),700),100)
 dictionary <- c(
-  "S LOOP", "SOUTH LOOP"
+  " J$", "",
+  "REVILLE", "REVEILLE"
 )
 dict <- Makedict(dictionary)
 #   test them first
@@ -828,8 +837,11 @@ tail(head(sort(unique(df2$Street)),700),100)
 
 tail(head(sort(unique(df2$Street)),800),100)
 dictionary <- c(
-                " 857H",  "",
-                " NRTH", ""
+                "SOUTH SOUTH",  "SOUTH",
+                "S SOUTH", "SOUTH",
+                " RD [ A-Z]*$", " RD",
+                "^SOUTH$", "SOUTH LOOP",
+                "^S LOOP", "SOUTH LOOP"
 )
 dict <- Makedict(dictionary)
 #   test them first
@@ -1116,7 +1128,6 @@ dictionary <- c(
                 "^SW FWY$","SOUTHWEST FWY", # 59
                 "^SW$","SOUTHWEST FWY", # 59
                 "^IH 45$","NORTH FWY", 
-                "^GULF$","GULF FWY", 
                 " ENTR "," ENT ", 
                 "SAM HOUSTON PARKWAY","SAM HOUSTON PKWY", 
                 "BW 8","SAM HOUSTON PKWY", 
@@ -1124,8 +1135,7 @@ dictionary <- c(
                 "^SAM HOUSTON PKWY","NORTH SAM HOUSTON PKWY", 
                 "^NORTH SAM HOUSTON PKWY","N SAM HOUSTON PKWY", 
                 "PKWY SOUTH", "PKWY",
-                "^SOUTHWEST PKWY$","SOUTHWEST FWY",
-                "^SOUTHWEST$","SOUTHWEST FWY"
+                "^SOUTHWEST PKWY$","SOUTHWEST FWY"
                 ) 
 dict <- Makedict(dictionary)
 #   test them first
@@ -1140,12 +1150,7 @@ keepdf2 <- df2
 ####################  One more check
 tail(head(sort(unique(df2$Street)),100),100)
 dictionary <- c(
-                "^2$","",
-                "23910", "",
-                " WAT$", " WAY",
-                " SR$", " ST",
-                "PEAVEY", "PEAVY",
-                "^NORTH$", "NORTH FWY"
+                "^2$",""
                 ) 
 dict <- Makedict(dictionary)
 #   test them first
@@ -1180,6 +1185,15 @@ df2$Street[mask&!maskout] <- paste("W",df2$Street[mask&!maskout],sep=" ")
 df2$Street[grepl("^[NSEW] NA$",df2$Street)] <- NA
 keepdf2 <- df2
 
+dictionary <- c(
+  "^E SOUTH", "SOUTH",
+  "^W GULF", "GULF"
+)
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df2, "Street", dict)
+#   Apply
+df2 <- applyregex(df2, "Street", dict)
 ```
 
 
