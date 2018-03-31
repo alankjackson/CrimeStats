@@ -211,7 +211,7 @@ for (beat in beats)
 }
 ```
 
-```{r read in August 2017 by beat}
+```{r read in June 2011 by beat}
 #   also June 2011
 for (mm in c("jun")) {
 for (beat in beats)
@@ -596,7 +596,7 @@ df2$Type <- str_replace_all(df2$Type,"-","")
 df2$Type <- str_replace_all(df2$Type,"FWY SER","FWY") 
 df2$Type <- str_replace_all(df2$Type,"FWYSER","FWY") 
 df2$Type <- str_replace_all(df2$Type,"SER","FWY") 
-df2$Type <- str_replace_all(df2$Type,"TER","FWY") 
+df2$Type <- str_replace_all(df2$Type,"TER","") 
 df2$Type <- str_replace_all(df2$Type,"FWYFWY","FWY") 
 df2$Type <- str_replace_all(df2$Type,"^CIR$","CIRCLE") 
 df2$Type <- str_replace_all(df2$Type,"^CIR$","CIRCLE") 
@@ -640,7 +640,7 @@ dictionary <- c(
                 " APT\\s*#*[A-Z0-9]*$", "", # remove Apartment numbers
                 " APARTMENT\\s*#*[A-Z0-9]*$", "", # remove Apartment numbers
                 " TRLR\\s*#*[A-Z0-9]*$", "", # remove Trailer numbers
-                " UNIT \\w*",  "", #  remove Unit numbers
+                " UNIT [0-9A-Z ]*",  "", #  remove Unit numbers
                 " NO\\s*\\d+", "", #  more Unit numbers 
                 " STE\\s*#*[A-Z0-9]*$", "",  #  SUITE number
                 " SUITE\\s*#*[A-Z0-9]*$", ""  #  SUITE number
@@ -771,14 +771,12 @@ dictionary <- c(
   "^1/2 ",     "" ,
   "^1 2 ",     "" ,
   "^[25] ",     "",
-  "^1280O ",     "",
-  "^1OO ", "",
-  "^2351",     "",
+  "^25 ",     "",
+  "^61$", "",
+  " ROOM 220",     "",
   "^2$", "2ND",
-  "830O ", "",
-  "9001C ", "",
-  "^A$", "",
-  "^A ", ""
+  "906A ", "",
+  "^AN ", ""
 )
 dict <- Makedict(dictionary)
 #   test them first
@@ -790,13 +788,9 @@ tail(head(sort(unique(df2$Street)),100),100)
 
 tail(head(sort(unique(df2$Street)),200),100)
 dictionary <- c(
-  " S12", "",
-  " F124", "",
-  " 384", "",
-  " 443", "",
-  "ROAD 131", "RD",
-  "ROAD 215", "RD",
-  " SUITE 375 F", ""
+  " SQUARE$", " SQ",
+  "^B ", "",
+  " B$", ""
 )
 dict <- Makedict(dictionary)
 #   test them first
@@ -807,8 +801,9 @@ tail(head(sort(unique(df2$Street)),200),100)
 
 tail(head(sort(unique(df2$Street)),300),100)
 dictionary <- c(
-                " BOX C", "",
-                " 238", "",
+                " H40", "",
+                "COMPANY LOCATED IN ILLINOIS", "",
+                "DAWN RIDGE", "DAWNRIDGE",
                 "FRWY", "FWY",
                 " LP ", " LOOP "
 )
@@ -823,7 +818,7 @@ tail(head(sort(unique(df2$Street)),400),100)
 dictionary <- c(
                 " *IBOB",   "",
                 " LOT", "",
-                "^E$", "EAST LOOP",
+                " E$", "",
                 "FWY [EW]$", "FWY",
                 "^IH 45$", "GULF FWY",
                 "^S IH 45 FWY", "GULF FWY",
@@ -844,9 +839,9 @@ df2$Street[maskgulf&masktype] <- "GULF FWY"
 
 tail(head(sort(unique(df2$Street)),500),100)
 dictionary <- c(
-  "B101", "",
-  "EAST LAKE", "EASTLAKE",
-  " \\*RACE WAY GAS STATION", ""
+  " 157", "",
+  "GREEN WILLOW", "GREENWILLOW",
+  "HIGHWAY", "HWY"
 )
 dict <- Makedict(dictionary)
 #   test them first
@@ -856,14 +851,19 @@ df2 <- applyregex(df2, "Street", dict)
 tail(head(sort(unique(df2$Street)),500),100)
 
 tail(head(sort(unique(df2$Street)),600),100)
+#   fix up loop 610
+maskloop <- grepl("W", df2$Suffix)
+maskih <- grepl("^IH 610", df2$Street)
+df2$Street[maskloop&maskih] <- "WEST LOOP"
+maskih <- grepl("^LOOP$", df2$Street)
+df2$Street[maskloop&maskih] <- "WEST LOOP"
 dictionary <- c(
                 "^LOOP$",    "SOUTH LOOP",
-                "^LOOP WEST", "SOUTH LOOP",
-                "VLL?G", "VILLAGE",
-                " 10A$", "",
-                "FIQUA", "FUQUA",
+                "^LOOP W[EST]*", "SOUTH LOOP",
+                "I45", "GULF FWY",
+                " BUILDING", "",
                 "HIGHWAY", "HWY",
-                "IH 610", "SOUTH LOOP"
+                "^IH 610", "SOUTH LOOP"
 )
 dict <- Makedict(dictionary)
 #   test them first
@@ -876,9 +876,9 @@ tail(head(sort(unique(df2$Street)),600),100)
 tail(head(sort(unique(df2$Street)),700),100)
 dictionary <- c(
   "^F M ", "FM ",
-  " 1713", "",
-  " ENTRANCE RA", "",
-  " PR$", "",
+  " STATIO$", " STATION",
+  "LP WEST", "SOUTH LOOP",
+  " ROOM \\w*$", "",
   " STR$", " ST"
 )
 dict <- Makedict(dictionary)
@@ -892,13 +892,8 @@ tail(head(sort(unique(df2$Street)),700),100)
 tail(head(sort(unique(df2$Street)),800),100)
 dictionary <- c(
                 "MLK",  "MARTIN LUTHER KING",
-                "FREEWAY 2306", "FWY",
-                "FREEWAY 2306", "FWY",
-                " 154", "",
-                "315", "",
-                "FWYE$", "FWY",
+                " TRAIL$", " TRL",
                 " RD [ A-Z]*$", " RD",
-                "^SOUTH$", "SOUTH LOOP",
                 "^S LOOP", "SOUTH LOOP"
 )
 dict <- Makedict(dictionary)
@@ -911,9 +906,8 @@ tail(head(sort(unique(df2$Street)),800),100)
 tail(head(sort(unique(df2$Street)),900),100)
 
 dictionary <- c(
-  " 1514PL$", "",
-  "IH 45", "GULF",
-  "IRON SPRING$", "IRON SPRINGS"
+  "S 2400 LOOP W", "SOUTH LOOP",
+  "SILVER SPRINGS", "SILVER SPRING"
 )
 dict <- Makedict(dictionary)
 #   test them first
@@ -924,6 +918,8 @@ df2 <- applyregex(df2, "Street", dict)
 tail(head(sort(unique(df2$Street)),900),100)
 tail(head(sort(unique(df2$Street)),1000),100)
 dictionary <- c(
+  "", "",
+  "", ""
 )
 dict <- Makedict(dictionary)
 #   test them first
@@ -936,9 +932,7 @@ df2$Street[grepl("^UNK ADDRESS$",df2$Street)] <- NA
 tail(head(sort(unique(df2$Street)),1000),100)
 tail(head(sort(unique(df2$Street)),1100),100)
 dictionary <- c(
-  "MALS 12 MAG 12 1ST MAW FPO AP 011 8182 779 60", "",
-  "LOOP E$", "LOOP",
-  "LOOP WEST", "LOOP"
+  "W IH 610 FWY S", "WEST LOOP"
 )
 dict <- Makedict(dictionary)
 #   test them first
@@ -950,7 +944,6 @@ tail(head(sort(unique(df2$Street)),1100),100)
 
 tail(head(sort(unique(df2$Street)),1200),100)
 dictionary <- c(
-  "O DAY", "ODAY",
   "^SAINT ", "ST "
 )
 dict <- Makedict(dictionary)
@@ -963,8 +956,6 @@ tail(head(sort(unique(df2$Street)),1200),100)
 
 tail(head(sort(unique(df2$Street)),1300),100)
 dictionary <- c(
-  " CO 03 07", "",
-  "DRIVE 1907 1", "DR"
 )
 dict <- Makedict(dictionary)
 #   test them first
@@ -976,7 +967,6 @@ tail(head(sort(unique(df2$Street)),1300),100)
 
 tail(head(sort(unique(df2$Street)),1400),100)
 dictionary <- c(
-  "REDFORD [ABC0-9 ]*$", "REDFORD ST"
 )
 dict <- Makedict(dictionary)
 #   test them first
@@ -999,10 +989,6 @@ tail(head(sort(unique(df2$Street)),1500),100)
 
 tail(head(sort(unique(df2$Street)),1600),100)
 dictionary <- c(
-  "^SECOND", "2ND",
-  " TRAIL$", " TRL",
-  "BLVD[ 0-9A-Z]*$", "BLVD",
-  " 4305", ""
 )
 dict <- Makedict(dictionary)
 #   test them first
@@ -1014,7 +1000,6 @@ tail(head(sort(unique(df2$Street)),1600),100)
 
 tail(head(sort(unique(df2$Street)),1700),100)
 dictionary <- c(
-  " 3802", ""
 )
 dict <- Makedict(dictionary)
 #   test them first
@@ -1079,16 +1064,16 @@ dictionary <- c(
                 "HWY 6",        "SH 6",
                 "BW 8 FWY", "W SAM HOUSTON PKWY",
                 "BW 8", "N SAM HOUSTON PKWY",
-                " SE$", " ST",
                 "^N$", "NORTH FWY",
                 "^N IH 45 FWY$", "NORTH FWY",
                 "^NORTH FWEY$", "NORTH FWY",
-                "NORHT", "NORTH",
+                "MURWOWRTH", "MURWORTH",
                 "FRWY", "FWY",
                 "FREEWAY", "FWY",
-                " 1513", "",
-                "EAST 28", "E 28",
-                "STATE HWY 249", "TX 249" 
+                "^S$", "SOUTH LOOP",
+                "TIDWLL", "TIDWELL",
+                "BELFORT", "BELLFORT",
+                "LN S$", "LN"
 )
 dict <- Makedict(dictionary)
 #   test them first
@@ -1181,6 +1166,7 @@ dictionary <- c(
                 "^NORTHWEST$","NORTHWEST FWY", #  290
                 "^US 290 FWY$","NORTHWEST FWY", #  290
                 "^US 290$","NORTHWEST FWY", #  290
+                "^HWY 290$","NORTHWEST FWY", #  290
                 "^NW FWY$","NORTHWEST FWY", #  290
                 "^NW$","NORTHWEST FWY", #  290
                 "^W KATY FWY FWY$","KATY FWY", #  290
@@ -1237,19 +1223,8 @@ keepdf2 <- df2
 ####################  One more check
 tail(head(sort(unique(df2$Street)),100),100)
 dictionary <- c(
-                " SOUTH$","",
-                " N$", "",
-                " A$", "",
-                "BYBROOK", "BAYBROOK",
-                " FRY$", " FWY",
-                " EXIT RAMP", "",
-                "FWYTO", "FWY @",
-                "GULFPALMS", "GULF PALMS",
-                " NE$", "",
-                "MOON ROCK", "MOONROCK",
-                "PACKERD", "PACKARD",
-                " 2209", "",
-                "TER C$", "TER"
+                "MAIN AND KIRBY","MAIN @ KIRBY",
+                "PEPPER DINE", "PEPPERDINE"
                 ) 
 dict <- Makedict(dictionary)
 #   test them first
@@ -1285,7 +1260,7 @@ df2$Street[grepl("^[NSEW] NA$",df2$Street)] <- NA
 keepdf2 <- df2
 
 dictionary <- c(
-  "^E SOUTH", "SOUTH"
+  "^[EW] SOUTH", "SOUTH"
 )
 dict <- Makedict(dictionary)
 #   test them first
