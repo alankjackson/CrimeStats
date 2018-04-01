@@ -114,40 +114,8 @@ for (district in districts)
 print(paste("Failed retrievals =", failures))
 ```
 
-#     August 2017 district files missing, so read individual beat files instead. 
 
-```{r read in August 2017 by beat}
-#   also March 2016
-for (mm in c("aug")) {
-for (beat in beats)
-    {
-    
-    url = paste("http://www.houstontx.gov/police/cs/stats2017/",mm,"17/",mm,"17",beat,".htm", sep="")
-    print(url)
-    
-
-    # read in html table and parse into a data frame
-    tempfile <- url %>% 
-      read_html() %>% 
-      html_nodes(xpath='/html/body/div/table') %>% 
-      html_table(header=TRUE)
-    tempfile <- tempfile[[1]]
-    
-    # Remove nonsense columns
-    tempfile <- select(tempfile,-starts_with("Field"))
-    
-    # Force consistent column names
-    names(tempfile) <- c("Date","Hour","Offense_Type","Beat","Premise","Block_Range","Street","Type","Suffix","Num_Off")
-    
-    # some hour fields are borked with character data
-    tempfile$Hour <- as.character(tempfile$Hour)
-    tempfile$Beat <- as.character(tempfile$Beat)
-    
-    # append to df2
-    df2 <- bind_rows(df2, tempfile)
-  }
-}
-```
+****  un-needed code for reading by beat
 
 ```{r read in March 2016 by beat}
 for (mm in c("mar")) {
@@ -186,47 +154,7 @@ for (beat in beats)
 #} 
 ```
 
-Feb 2014 at District level is repeated from 15e, not 16e. 
-```{r read in Feb 2015 by beat}
-for (mm in c("feb")) {
-for (beat in beats)
-    {
-    
-    url = paste("http://www.houstontx.gov/police/cs/stats2015/",mm,"15/",mm,"15",beat,".htm", sep="")
-    print(url)
-    
 
-    # read in html table and parse into a data frame
-    tempfile <- url %>% 
-      read_html() %>% 
-      html_nodes(xpath='/html/body/div/table') %>% 
-      html_table(header=TRUE)
-    tempfile <- tempfile[[1]]
-    
-    # Remove nonsense columns
-    tempfile <- select(tempfile,-starts_with("Field"))
-    
-    # Force consistent column names
-    names(tempfile) <- c("Date","Hour","Offense_Type","Beat","Premise","Block_Range","Street","Type","Suffix","Num_Off")
-    
-    # some hour fields are borked with character data
-    tempfile$Hour <- as.character(tempfile$Hour)
-    tempfile$Beat <- as.character(tempfile$Beat)
-    
-    # append to df2
-    df2 <- bind_rows(df2, tempfile)
-  }
-}
-
-#   get rid of bad records
-maskdist <- grepl("15E", df2$Beat)
-df2 <- df2[!maskdist,]
-
-#for (i in 1:128){
-#  pmask <- grepl(premise[i,1],  df2$Premise)
-#  df2$Premise[pmask] <- premise[i,2]
-#} 
-```
 
 ```{r repair beat field since it was misinterpreted as a float}
 
@@ -273,14 +201,16 @@ arrange(b,num) %>% tail(5)
 ############
 df2$Date <- mdy(df2$Date)
 df2 <- df2 %>%
-  filter(between(Date,mdy("1/1/2009"),mdy("1/1/2018")))
+  filter(between(Date,mdy("1/1/2016"),mdy("1/1/2019")))
 
-df2 %>% group_by(Date) %>%
+df2 %>% 
+  filter(between(Date,mdy("12/1/2017"),mdy("1/1/2019"))) %>%
+  group_by(Date) %>%
   summarise(Total_Incidents_per_Day=n()) %>%
 ggplot(aes(Total_Incidents_per_Day)) +
-  geom_bar()
+  geom_histogram(binwidth=15)
 
-ggsave(paste("District",district,"_","IncidentsPerDayHist.jpeg", sep=""), device="jpeg", path = paste(plotpath,"District",district,"_material/",sep=""))
+ggsave(paste("Monthly_",mon,"_",yr,"_IncidentsPerDayHist.jpeg", sep=""), device="jpeg", path = plotpath)
 ```
 
 
@@ -297,8 +227,8 @@ df2$Hour <- as.integer(df2$Hour)
 sort(unique(df2$Hour))
 ggplot(data=df2) +
   geom_bar(aes(x=Hour)) +
-  labs(title=paste("Incidents per Hour of Day, District",district))
-ggsave(paste("District",district,"_","IncidentsPerHourHist.jpeg", sep=""), device="jpeg", path = paste(plotpath,"District",district,"_material/",sep=""))
+  labs(title=paste("Incidents per Hour of Day, ",mon," 20",yr,sep=""))
+ggsave(paste("Monthly_",mon,"_",yr,"_IncidentsPerHourHist.jpeg", sep=""), device="jpeg", path = plotpath)
 ```
 
 ```{r Check Offense_Type field}
@@ -322,46 +252,27 @@ dict <- Makedict(dictionary)
 testregex(df2, "Offense_Type", dict)
 #   Apply
 df2 <- applyregex(df2, "Offense_Type", dict)
-#   One record has an incident type of "1". We'll just delete that record.
-df2 <- df2[!df2$Offense_Type=="1",]
 
 sort(unique(df2$Offense_Type))
 #   Bar chart of various incidents
 ggplot(data=df2) +
   geom_bar(aes(x=Offense_Type)) +
-  labs(title=paste("Incidents per Offense Type, District",district)) +
+  labs(title=paste("Incidents per Offense Type, Monthly",mon,yr)) +
   coord_flip()
-ggsave(paste("District",district,"_","IncidentsPerOffenseType.jpeg", sep=""), device="jpeg", path = paste(plotpath,"District",district,"_material/",sep=""))
-# Plot of incidents per month vs date
-per_month = df2 %>% 
-  mutate(mon = as.numeric(format(Date, "%m")), yr = as.numeric(format(Date, "%Y"))) %>%
-  mutate(YrMon=yr+mon/12) %>%
-  group_by(YrMon, Offense_Type) %>%
+ggsave(paste("Monthly_",mon,"_",yr,"_IncidentsPerOffenseType.jpeg", sep=""), device="jpeg", path = plotpath)
+
+# Plot of incidents per day vs date
+per_day = df2 %>% 
+  mutate(day = as.numeric(format(Date, "%d"))) %>%
+  group_by(day, Offense_Type) %>%
   summarize(total=n())
 
-ggplot(data=per_month, mapping=aes(x=YrMon, y=total, color=Offense_Type)) +
+ggplot(data=per_day, mapping=aes(x=day, y=total, color=Offense_Type)) +
   geom_point() +
   geom_line() +
-  labs(title="Total incidents", y="Total incidents per month", x="Averaged Monthly") 
-ggsave(paste("District",district,"_","IncidentsPerMonthPerOffenseType.jpeg", sep=""), device="jpeg", path = paste(plotpath,"District",district,"_material/",sep=""))
+  labs(title="Total incidents", y="Total incidents per day", x="Averaged Daily") 
+ggsave(paste("Monthly_",mon,"_",yr,"_IncidentsPerDayPerOffenseType.jpeg", sep=""), device="jpeg", path = plotpath)
 
-#   filter out past 2010 to get a better view of what is going on
-per_month = df2 %>% 
-  mutate(mon = as.numeric(format(Date, "%m")), yr = as.numeric(format(Date, "%Y"))) %>%
-  mutate(YrMon=yr+mon/12) %>%
-  filter(YrMon<2011) %>%
-  group_by(YrMon, Offense_Type) %>%
-  summarize(total=n())
-ggplot(data=per_month, mapping=aes(x=YrMon, y=total, color=Offense_Type)) +
-  geom_point() +
-  geom_line() +
-  labs(title="Total incidents expanded", y="Total incidents per month", x="Averaged Monthly") 
-
-#     Get rid of all data prior to June 2009, since it cannot be compared with later data
-
-df2 <- df2 %>%
-  filter(between(Date,mdy("6/1/2009"),mdy("1/1/2018")))
-sort(unique(df2$Offense_Type))
 
 ```
 ```{r Check Beat data}
@@ -372,7 +283,6 @@ sort(unique(df2$Offense_Type))
 sort(unique(df2$Beat))
 # remove non-alphanumerics
 df2$Beat <- str_replace_all(df2$Beat,"\\W","")
-df2$Beat <- str_replace_all(df2$Beat,"g","")
 
 sort(unique(df2$Beat))
 ```
@@ -384,17 +294,6 @@ sort(unique(df2$Beat))
 #################################
 keepdf2 <- df2
 
-per_month = df2 %>% 
-  mutate(mon = as.numeric(format(Date, "%m")), yr = as.numeric(format(Date, "%Y"))) %>%
-  mutate(YrMon=yr+mon/12) %>%
-  group_by(YrMon) %>%
-  summarize(count=sum(is.na(Premise)))
-
-ggplot(data=per_month, mapping=aes(x=YrMon, y=count)) +
-  geom_point() +
-  labs(title="Blank Premise fields per month", y="Total blanks per month", x="Averaged Monthly") 
-
-ggsave(paste("District",district,"_","BlankPremiseFieldDistribution.jpeg", sep=""), device="jpeg", path = paste(plotpath,"District",district,"_material/",sep=""))
 
 #   make more manageable by changing NULL to UNK
 df2$Premise[is.na(df2$Premise)] <- "Other or Unknown"
@@ -532,14 +431,14 @@ sort(unique(df2$Premise))
 
 ggplot(data=df2) +
   geom_bar(aes(x=Premise)) +
-  labs(title=paste("Incidents per premise, District",district)) +
+  labs(title=paste("Incidents per premise, ",mon, yr)) +
   coord_flip()
 
 reorder_size <- function(x) {
   factor(x, levels = names(sort(table(x))))
 }
 ggplot(df2, aes(reorder_size(df2$Premise))) + geom_bar() + coord_flip()
-ggsave(paste("District",district,"_","PremiseFrequency.jpeg", sep=""), device="jpeg", path = paste(plotpath,"District",district,"_material/",sep=""))
+ggsave(paste("Monthly_",mon,"_",yr,"_PremiseFrequency.jpeg", sep=""), device="jpeg", path = plotpath)
 
 a <- left_join(df2,ptab,by="Premise")
 ####   check for no missing short premises
@@ -578,7 +477,6 @@ df2$Type <- str_replace_all(df2$Type,"FWYFWY","FWY")
 df2$Type <- str_replace_all(df2$Type,"^CIR$","CIRCLE") 
 df2$Type <- str_replace_all(df2$Type,"^CIR$","CIRCLE") 
 df2$Type <- str_replace_all(df2$Type,"^UTRN$","") 
-df2$Type <- str_replace_all(df2$Type,"^WALK$","") 
 
 sort(unique(df2$Type))
 ```
