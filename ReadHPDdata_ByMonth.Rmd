@@ -1252,8 +1252,24 @@ df2$Street[maskloop] <- str_replace(df2$Street[maskloop], "^E ","EAST ")
 df2$Street[maskloop] <- str_replace(df2$Street[maskloop], "^W ","WEST ")
 df2$Street[maskloop] <- str_replace(df2$Street[maskloop], "^N ","NORTH ")
 df2$Street[maskloop] <- str_replace(df2$Street[maskloop], "^S ","SOUTH ")
-df2$Street <- str_replace(df2$Street, "WEST LOOP SOUTH LOOP","WEST LOOP")
 sort(unique(df2$Street[maskloop]))
+
+#   Work each ambiguous freeway separately, leveraging off the
+#   location of the beat the incident was reported in.
+
+######   US 59 / I 69 : either EASTEX or SOUTHWEST
+
+# Southwest: Westside, Fondren, Central, and South Central
+masksw <- grepl("19G|18F|17E|1A|10H", df2$Beat)
+maskstreet <- grepl(" 59| 69", df2$Street)
+df2$Street[maskstreet&masksw] <- "SOUTHWEST FWY"
+# Eastex: Northeast
+masksw <- grepl("7C|8C|9C|24C", df2$Beat)
+maskstreet <- grepl(" 59| 69", df2$Street)
+df2$Street[maskstreet&masksw] <- "EASTEX FWY"
+
+#######################   stopped here
+
 
 #   settle on Katy Fwy, Gulf Fwy, North, East, South FWY's, and LOOP instead of 610,
 dictionary <- c(
