@@ -1257,7 +1257,9 @@ sort(unique(df2$Street[maskloop]))
 #   Work each ambiguous freeway separately, leveraging off the
 #   location of the beat the incident was reported in.
 
+#############################
 ######   US 59 / I 69 : either EASTEX or SOUTHWEST
+#############################
 
 # Southwest: Westside, Fondren, Central, and South Central
 masksw <- grepl("19G|18F|17E|1A|10H", df2$Beat)
@@ -1267,6 +1269,36 @@ df2$Street[maskstreet&masksw] <- "SOUTHWEST FWY"
 masksw <- grepl("7C|8C|9C|24C", df2$Beat)
 maskstreet <- grepl(" 59| 69", df2$Street)
 df2$Street[maskstreet&masksw] <- "EASTEX FWY"
+
+#############################
+######   I 10 : either EAST or KATY
+#############################
+
+# Katy Fwy: Westside, Northwest, Central, and North
+masksw <- grepl("20G|4F|5F|2A30|2A40|2A50|2A60|3B", df2$Beat)
+maskstreet <- grepl(" 10", df2$Street)
+df2$Street[maskstreet&masksw] 
+df2$Street[maskstreet&masksw] <- "KATY FWY"
+# East Fwy: Central
+masksw <- grepl("1A10|2A10|7C|8C|9C", df2$Beat)
+maskstreet <- grepl(" 10", df2$Street)
+df2$Street[maskstreet&masksw] 
+df2$Street[maskstreet&masksw] <- "EAST FWY"
+
+#############################
+######   I 45 : either NORTH or GULF
+#############################
+
+# North Fwy: North, Central
+masksw <- grepl("1A|2A|5F|3B|6B", df2$Beat)
+maskstreet <- grepl(" 45", df2$Street)
+df2$Street[maskstreet&masksw] 
+df2$Street[maskstreet&masksw] <- "NORTH FWY"
+# Gulf Fwy: South Central, Eastside, Southeast, Clear Lake
+masksw <- grepl("10H|11H|13D|12D", df2$Beat)
+maskstreet <- grepl(" 45", df2$Street)
+df2$Street[maskstreet&masksw] 
+df2$Street[maskstreet&masksw] <- "GULF FWY"
 
 #######################   stopped here
 
