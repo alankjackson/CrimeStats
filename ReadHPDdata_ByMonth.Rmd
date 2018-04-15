@@ -56,8 +56,8 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r read month}
 #   set year, month
-yr = str_pad(as.character(17),2,pad="0")
-mon = "dec"
+yr = str_pad(as.character(18),2,pad="0")
+mon = "jan"
 districts <- c("1a", "2a", "3b", "4f", "5f", "6b", "7c", "8c", "9c", "10h", "11h", "12d", "13d", "14d", "15e", "16e", "17e", "18f", "19g", "20g", "24c")
 
 # initialize empty data frame
