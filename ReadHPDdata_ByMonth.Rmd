@@ -1340,17 +1340,37 @@ masknodir <- grepl("^SAM HOUSTON", df2$Street) # no direction
 df2$Street[maskstreet&masksw&masknodir] 
 df2$Street[maskstreet&masksw&masknodir] <- "E SAM HOUSTON PKWY"
 
+#############################
+###   SH 6 goes to N or S Texas 6
+#############################
+
+# North Texas 6
+masksw <- grepl("4F|5F", df2$Beat)
+maskstreet <- grepl("^SH 6", df2$Street)
+masksuffix <- grepl("N", df2$Suffix)
+df2$Street[maskstreet&masksuffix] 
+df2$Street[maskstreet&masksuffix] <- "N TEXAS 6" 
+df2$Street[maskstreet&masksw] 
+df2$Street[maskstreet&masksw] <- "N TEXAS 6"
+
+# South Texas 6
+masksw <- grepl("20G|19G", df2$Beat)
+maskstreet <- grepl("^SH 6", df2$Street)
+masksuffix <- grepl("S", df2$Suffix)
+df2$Street[maskstreet&masksuffix] 
+df2$Street[maskstreet&masksuffix] <- "S TEXAS 6" 
+maskstreet <- grepl("^SH 6", df2$Street)
+df2$Street[maskstreet&masksw] 
+df2$Street[maskstreet&masksw] <- "S TEXAS 6"
+
+maskstreet <- grepl("SH 6", df2$Street)
+df2$Street[maskstreet] 
+df2$Street[maskstreet] <- str_replace(df2$Street[maskstreet],"SH 6","TEXAS 6")
 
 #######################   stopped here
-###  SH6, LOOP, 290, Beltway 8, Tomball Pkwy (249),
+###  LOOP, 290, Beltway 8, Tomball Pkwy (249),
 ###  Hwy 90, 225, 288, TX 35, TX 3 (Old Galveston Rd)
 
-
-# Gulf Fwy: South Central, Eastside, Southeast, Clear Lake
-masksw <- grepl("10H|11H|13D|12D", df2$Beat)
-maskstreet <- grepl(" 45", df2$Street)
-df2$Street[maskstreet&masksw] 
-df2$Street[maskstreet&masksw] <- "GULF FWY"
 
 
 
