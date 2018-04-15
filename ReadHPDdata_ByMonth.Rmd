@@ -1301,7 +1301,7 @@ df2$Street[maskstreet&masksw]
 df2$Street[maskstreet&masksw] <- "GULF FWY"
 
 #############################
-######   Sam Houston PKWY: N,S,E,W
+######   Sam Houston PKWY: N,S,E,W (Beltway 8)
 #############################
 
 maskst <- grepl("ST", df2$Type)
@@ -1410,10 +1410,31 @@ maskloop <- grepl("^LOOP[ NSEW]*$", df2$Street) # who needs work?
 df2$Street[maskloop&masksw] 
 df2$Street[maskloop&masksw] <- "WEST LOOP"
 
+#############################
+###   TX-249 goes to Tomball Pkwy and W Mt Houston
+#############################
+maskstreet <- grepl("249", df2$Street)
+# W Mt Houston
+masksw <- grepl("6B", df2$Beat)
+df2$Street[maskstreet&masksw]
+df2$Street[maskstreet&masksw] <- "W MT HOUSTON" 
+# Tomball Pkwy
+masksw <- grepl("5F", df2$Beat)
+df2$Street[maskstreet] 
+df2$Street[maskstreet&masksw] 
+df2$Street[maskstreet&masksw] <- "TOMBALL PKWY"
+df2$Street[maskstreet] <- "TOMBALL PKWY"
+
+
 
 #######################   stopped here
-###  290, Beltway 8, Tomball Pkwy (249),
-###  Hwy 90, 225, 288, TX 35, TX 3 (Old Galveston Rd)
+###  290= NORTHWEST FWY
+###  249 = Tomball Pkwy and W Mt Houston
+###  Hwy 90 = Crosby Fwy, Bus 90 = Beaumont hwy, 90 alt = OST
+###  225 = Pasadena Fwy 
+###  288 = South Fwy
+###  TX 35 = Telephone Road or Reville Street 
+###  TX 3 = Old Galveston Rd
 
 
 
