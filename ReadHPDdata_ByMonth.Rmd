@@ -1367,9 +1367,59 @@ maskstreet <- grepl("SH 6", df2$Street)
 df2$Street[maskstreet] 
 df2$Street[maskstreet] <- str_replace(df2$Street[maskstreet],"SH 6","TEXAS 6")
 
+############################
+#####   the Loop
+############################
+
+maskloop <- grepl("^LOOP[ NSEW]*$", df2$Street) # who needs work?
+df2$Street[maskloop]
+# North Loop
+maskloop <- grepl("^LOOP[ NSEW]*$", df2$Street) # who needs work?
+masksw <- grepl("3B|2A|9C20|7C", df2$Beat)
+masksuffix <- grepl("N", df2$Suffix)
+df2$Street[maskloop&masksuffix] 
+df2$Street[maskloop&masksuffix] <- "NORTH LOOP" 
+maskloop <- grepl("^LOOP[ NSEW]*$", df2$Street) # who needs work?
+df2$Street[maskloop&masksw] 
+df2$Street[maskloop&masksw] <- "NORTH LOOP"
+# East Loop
+maskloop <- grepl("^LOOP[ NSEW]*$", df2$Street) # who needs work?
+masksw <- grepl("9C10|9C30", df2$Beat)
+masksuffix <- grepl("E", df2$Suffix)
+df2$Street[maskloop&masksuffix] 
+df2$Street[maskloop&masksuffix] <- "EAST LOOP" 
+maskloop <- grepl("^LOOP[ NSEW]*$", df2$Street) # who needs work?
+df2$Street[maskloop&masksw] 
+df2$Street[maskloop&masksw] <- "EAST LOOP"
+# South Loop
+maskloop <- grepl("^LOOP[ NSEW]*$", df2$Street) # who needs work?
+masksw <- grepl("11H|13D|14D|15E30|15E40", df2$Beat)
+masksuffix <- grepl("S", df2$Suffix)
+df2$Street[maskloop&masksuffix] 
+df2$Street[maskloop&masksuffix] <- "SOUTH LOOP" 
+maskloop <- grepl("^LOOP[ NSEW]*$", df2$Street) # who needs work?
+df2$Street[maskloop&masksw] 
+df2$Street[maskloop&masksw] <- "SOUTH LOOP"
+# West Loop
+maskloop <- grepl("^LOOP[ NSEW]*$", df2$Street) # who needs work?
+masksw <- grepl("18F|2A50|1A50|15E10|5F", df2$Beat)
+masksuffix <- grepl("W", df2$Suffix)
+df2$Street[maskloop&masksuffix] 
+df2$Street[maskloop&masksuffix] <- "WEST LOOP" 
+maskloop <- grepl("^LOOP[ NSEW]*$", df2$Street) # who needs work?
+df2$Street[maskloop&masksw] 
+df2$Street[maskloop&masksw] <- "WEST LOOP"
+
+
 #######################   stopped here
-###  LOOP, 290, Beltway 8, Tomball Pkwy (249),
+###  290, Beltway 8, Tomball Pkwy (249),
 ###  Hwy 90, 225, 288, TX 35, TX 3 (Old Galveston Rd)
+
+
+
+
+
+
 
 
 
