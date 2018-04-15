@@ -1300,7 +1300,58 @@ maskstreet <- grepl(" 45", df2$Street)
 df2$Street[maskstreet&masksw] 
 df2$Street[maskstreet&masksw] <- "GULF FWY"
 
+#############################
+######   Sam Houston PKWY: N,S,E,W
+#############################
+
+maskst <- grepl("ST", df2$Type)
+maskat <- grepl("@", df2$Street)
+maskstreet <- grepl("SAM HOUSTON", df2$Street)&!maskst&!maskat
+# North 
+masksw <- grepl("6B|7C|8C", df2$Beat)
+masksuffix <- grepl("N", df2$Suffix)
+df2$Street[maskstreet&masksuffix]
+df2$Street[maskstreet&masksuffix] <- "N SAM HOUSTON PKWY" # with suffix
+masknodir <- grepl("^SAM HOUSTON", df2$Street) # no direction
+df2$Street[maskstreet&masksw&masknodir] 
+df2$Street[maskstreet&masksw&masknodir] <- "N SAM HOUSTON PKWY"
+# South 
+masksw <- grepl("12D|13D|16E", df2$Beat)
+masksuffix <- grepl("S", df2$Suffix)
+df2$Street[maskstreet&masksuffix]
+df2$Street[maskstreet&masksuffix] <- "S SAM HOUSTON PKWY" # with suffix
+masknodir <- grepl("^SAM HOUSTON", df2$Street) # no direction
+df2$Street[maskstreet&masksw&masknodir] 
+df2$Street[maskstreet&masksw&masknodir] <- "S SAM HOUSTON PKWY"
+# West 
+masksw <- grepl("19G|20G|4F|5F", df2$Beat)
+masksuffix <- grepl("W", df2$Suffix)
+df2$Street[maskstreet&masksuffix]
+df2$Street[maskstreet&masksuffix] <- "W SAM HOUSTON PKWY" # with suffix
+masknodir <- grepl("^SAM HOUSTON", df2$Street) # no direction
+df2$Street[maskstreet&masksw&masknodir] 
+df2$Street[maskstreet&masksw&masknodir] <- "W SAM HOUSTON PKWY"
+# East 
+masksw <- grepl("", df2$Beat)
+masksuffix <- grepl("E", df2$Suffix)
+df2$Street[maskstreet&masksuffix]
+df2$Street[maskstreet&masksuffix] <- "E SAM HOUSTON PKWY" # with suffix
+masknodir <- grepl("^SAM HOUSTON", df2$Street) # no direction
+df2$Street[maskstreet&masksw&masknodir] 
+df2$Street[maskstreet&masksw&masknodir] <- "E SAM HOUSTON PKWY"
+
+
 #######################   stopped here
+###  SH6, LOOP, 290, Beltway 8, Tomball Pkwy (249),
+###  Hwy 90, 225, 288, TX 35, TX 3 (Old Galveston Rd)
+
+
+# Gulf Fwy: South Central, Eastside, Southeast, Clear Lake
+masksw <- grepl("10H|11H|13D|12D", df2$Beat)
+maskstreet <- grepl(" 45", df2$Street)
+df2$Street[maskstreet&masksw] 
+df2$Street[maskstreet&masksw] <- "GULF FWY"
+
 
 
 #   settle on Katy Fwy, Gulf Fwy, North, East, South FWY's, and LOOP instead of 610,
