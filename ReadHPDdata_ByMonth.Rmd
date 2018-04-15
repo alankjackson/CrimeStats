@@ -1425,6 +1425,32 @@ df2$Street[maskstreet&masksw]
 df2$Street[maskstreet&masksw] <- "TOMBALL PKWY"
 df2$Street[maskstreet] <- "TOMBALL PKWY"
 
+#############################
+###   US-290 goes to Northwest Fwy
+#############################
+maskstreet <- grepl("290", df2$Street)
+df2$Street[maskstreet] 
+df2$Street[maskstreet] <- "NORTHWEST FWY"
+
+#############################
+###   US-90 goes to Crosby Fwy, Beaumont Hwy, or Old Spanish Trl
+#############################
+maskstreet <- grepl("US 90", df2$Street)
+# Old Spanish Trl (US 90 Alt)
+masksw <- grepl("A", df2$Street) # look for "alternate" in name
+df2$Street[maskstreet&masksw]
+df2$Street[maskstreet&masksw] <- "OLD SPANISH TRL" 
+# Beaumont Hwy (US 90 Bus)
+masksw <- grepl("B", df2$Street)
+df2$Street[maskstreet] 
+df2$Street[maskstreet&masksw] 
+df2$Street[maskstreet&masksw] <- "BEAUMONT HWY"
+# Crosby Fwy (US 90)
+df2$Street[maskstreet] 
+df2$Street[maskstreet] <- "CROSBY FWY"
+
+
+
 
 
 #######################   stopped here
