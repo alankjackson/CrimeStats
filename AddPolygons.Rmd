@@ -216,6 +216,34 @@ Beats <- read_sf('/home/ajackson/Dropbox/CrimeStats/BeatPolys/Houston_Police_Bea
 summary(Beats)
 
 ```
+*** add constable precincts ***
+The local Houston-Galveston Area Council has GIS datasets for free, including constable precincts. I will ding them for not having clear documentation on the datasets. It would be nice to know how they were generated. Being gdb files, easy to read in. However, they need to be converted to lat/long, as
+they are in X-Y.
+
+```{r read in and add constable precincts}
+###########################################
+#   Read in and add Constable Precincts   #
+###########################################
+#  http://www.h-gac.com/rds/gis-data/gis-datasets.aspx
+fgdb <- "/home/ajackson/Dropbox/CrimeStats/ConstablePolygons/Harris_County_Constable_Precincts.gdb"
+
+# Read the feature class
+condata <- st_read(fgdb)
+
+#   unproject the zipcode data to lat longs on proper datum
+
+conlatlong <- st_transform(condata, googlecrs)
+summary(conlatlong)
+
+
+#   Save zipcode file
+
+saveRDS(conlatlong,"~/Dropbox/CrimeStats/ConstablePrecincts.rds")
+
+```
+
+
+
 
 ```{r plot our polygons}
 #   Neighborhoods
@@ -248,6 +276,14 @@ ggmap(gmap, extent='normal', maprange=FALSE, show.legend=FALSE) +
   geom_sf(data=Beats, mapping=aes(District="blue"),fill=NA, inherit.aes=FALSE, show.legend=FALSE) +
   coord_sf(xlim=c(-95.6, -95.2), ylim=c(29.6, 29.9)) 
   
+#   Constable Precincts
+temp <- readRDS("~/Dropbox/CrimeStats/ConstablePrecincts.rds")
+
+ggmap(gmap, extent='normal', maprange=FALSE, show.legend=FALSE) +
+  geom_sf(data=temp, mapping=aes(Zip_Code="blue"),fill=NA, inherit.aes=FALSE, show.legend=FALSE) +
+  coord_sf(xlim=c(-95.6, -95.2), ylim=c(29.6, 29.9)) 
+
+
   
 ```
 
