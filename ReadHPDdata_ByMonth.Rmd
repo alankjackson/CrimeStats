@@ -1291,12 +1291,14 @@ sort(unique(df2$Street[maskloop]))
 #############################
 
 # Southwest: Westside, Fondren, Central, and South Central
-masksw <- grepl("19G|18F|17E|1A|10H", df2$Beat)
-maskstreet <- grepl(" 59| 69", df2$Street)
+masksw <- grepl("19G|18F|17E|1A|2A|10H|20G", df2$Beat)
+maskstreet <- grepl("[SY] 59| 69", df2$Street)
+df2$Street[maskstreet&masksw]
 df2$Street[maskstreet&masksw] <- "SOUTHWEST FWY"
 # Eastex: Northeast
 masksw <- grepl("7C|8C|9C|24C", df2$Beat)
-maskstreet <- grepl(" 59| 69", df2$Street)
+maskstreet <- grepl("[SY] 59| 69", df2$Street)
+df2$Street[maskstreet&masksw]
 df2$Street[maskstreet&masksw] <- "EASTEX FWY"
 
 #############################
@@ -1305,12 +1307,12 @@ df2$Street[maskstreet&masksw] <- "EASTEX FWY"
 
 # Katy Fwy: Westside, Northwest, Central, and North
 masksw <- grepl("20G|4F|5F|2A30|2A40|2A50|2A60|3B", df2$Beat)
-maskstreet <- grepl(" 10", df2$Street)
+maskstreet <- grepl(" 10 | 10$", df2$Street)
 df2$Street[maskstreet&masksw] 
 df2$Street[maskstreet&masksw] <- "KATY FWY"
 # East Fwy: Central
 masksw <- grepl("1A10|2A10|7C|8C|9C", df2$Beat)
-maskstreet <- grepl(" 10", df2$Street)
+maskstreet <- grepl(" 10 | 10$", df2$Street)
 df2$Street[maskstreet&masksw] 
 df2$Street[maskstreet&masksw] <- "EAST FWY"
 
@@ -1320,12 +1322,12 @@ df2$Street[maskstreet&masksw] <- "EAST FWY"
 
 # North Fwy: North, Central
 masksw <- grepl("1A|2A|5F|3B|6B", df2$Beat)
-maskstreet <- grepl(" 45$", df2$Street)
+maskstreet <- grepl(" 45$| 45 ", df2$Street)
 df2$Street[maskstreet&masksw] 
 df2$Street[maskstreet&masksw] <- "NORTH FWY"
 # Gulf Fwy: South Central, Eastside, Southeast, Clear Lake
 masksw <- grepl("10H|11H|13D|12D", df2$Beat)
-maskstreet <- grepl(" 45", df2$Street)
+maskstreet <- grepl(" 45$| 45 ", df2$Street)
 df2$Street[maskstreet&masksw] 
 df2$Street[maskstreet&masksw] <- "GULF FWY"
 
@@ -1392,7 +1394,7 @@ maskstreet <- grepl("^SH 6", df2$Street)
 df2$Street[maskstreet&masksw] 
 df2$Street[maskstreet&masksw] <- "S TEXAS 6"
 
-maskstreet <- grepl("SH 6|HWY 6", df2$Street)
+maskstreet <- grepl("SH 6|HWY 6$", df2$Street)
 df2$Street[maskstreet] 
 df2$Street[maskstreet] <- str_replace(df2$Street[maskstreet],"SH 6","TEXAS 6")
 
@@ -1457,19 +1459,20 @@ df2$Street[maskstreet] <- "TOMBALL PKWY"
 #############################
 ###   US-290 goes to Northwest Fwy
 #############################
-maskstreet <- grepl("290", df2$Street)
+maskstreet <- grepl("290|^NW FWY", df2$Street)
 df2$Street[maskstreet] 
 df2$Street[maskstreet] <- "NORTHWEST FWY"
 
 #############################
 ###   US-90 goes to Crosby Fwy, Beaumont Hwy, or Old Spanish Trl
 #############################
-maskstreet <- grepl("US 90", df2$Street)
+maskstreet <- grepl("US 90|HWY 90", df2$Street)
 # Old Spanish Trl (US 90 Alt)
 masksw <- grepl("A", df2$Street) # look for "alternate" in name
 df2$Street[maskstreet&masksw]
 df2$Street[maskstreet&masksw] <- "OLD SPANISH TRL" 
 # Beaumont Hwy (US 90 Bus)
+maskstreet <- grepl("US 90|HWY 90", df2$Street)
 masksw <- grepl("B", df2$Street)
 df2$Street[maskstreet] 
 df2$Street[maskstreet&masksw] 
@@ -1494,12 +1497,17 @@ keepdf2 <- df2
 ####################  One more check
 tail(head(sort(unique(df2$Street)),100),100)
 dictionary <- c(
-                " TRAILER$", "",
-                " A$", "",
-                "HWY 6 NORTH", "N TEXAS 6",
-                "NW FWY", "NORTHWEST FWY",
-                " 5$", "",
-                "PRWY", "PKWY"
+                "CENT3ER", "CENTER",
+                " 7$", "",
+                "GREEN TEE", "GREEN TREE",
+                "HW 6", "TEXAS 6",
+                "KING JR$", "KING",
+                "TRL FWY", "TRL",
+                "PMB", "TRL",
+                "PEBBLE DOWNE", "PEBBLEDOWNE",
+                " PRK", " PARK",
+                "PW FUQWAY", "W FUQUA",
+                "FWY HWY", "FWY"
                 ) 
 dict <- Makedict(dictionary)
 #   test them first
