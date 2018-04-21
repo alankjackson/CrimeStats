@@ -174,18 +174,37 @@ limit <- min(geocodeQueryCheck(), sum(mask1))
 # values from each end of the block to get a true block center value.
 
 Addresses <- paste(workingset$Add2[mask1][1:limit], workingset$Street[mask1][1:limit])
-AllLatLong <- geocode(Addresses, output="all") # geocode addresses
 
-latlongs <- map_df(AllLatLong, getfields) # extract desired fields
-#latlongs <- getfields(AllLatLong)
+zero = 0
+query = 0
+for (i in 1:limit) {
+  AllLatLong <- geocode(Addresses[i], output="all") # geocode addresses
 
-workingset$lon2[mask1][1:limit] = latlongs$Longitude
-workingset$lat2[mask1][1:limit] = latlongs$Latitude
-workingset$type2[mask1][1:limit] = latlongs$types
-workingset$StreetName2[mask1][1:limit] = latlongs$StreetName
-workingset$LocType2[mask1][1:limit] = latlongs$LocType
+  #latlongs <- map_df(AllLatLong, getfields) # extract desired fields
+  latlongs <- getfields(AllLatLong)
 
-map_df(AllLatLong, testgeocode)
+  workingset$lon2[mask1][i] = latlongs$Longitude
+  workingset$lat2[mask1][i] = latlongs$Latitude
+  workingset$type2[mask1][i] = latlongs$types
+  workingset$StreetName2[mask1][i] = latlongs$StreetName
+  workingset$LocType2[mask1][i] = latlongs$LocType
+  
+  #testgeocode(AllLatLong)
+  if(length(AllLatLong$results)==0){
+      print(paste("--->", AllLatLong$status))
+      if (AllLatLong$status == "OVER_QUERY_LIMIT") {
+        query <- query + 1
+      }
+      if (AllLatLong$status == "ZERO_RESULTS") {
+        zero <- zero + 1
+      }
+  }
+  
+  Sys.sleep(2)
+}
+
+print(paste("limit =",limit,", Over Query =",query,", Zero =",zero, " Pct fail =",query/limit))
+#map_df(AllLatLong, testgeocode)
 
 sum(is.na(workingset$lat1)&is.na(workingset$Latitude))
 sum(is.na(workingset$lon1)&is.na(workingset$Longitude))
@@ -224,7 +243,7 @@ sum(outside)
 workingset$lat2[outside] <- NA
 workingset$lon2[outside] <- NA
   
-##############   stopped here 8 Mar 2018
+##############   stopped here 2 Apr 2018
 #   Check input street names against output
 
 getstreet <- function(x){
