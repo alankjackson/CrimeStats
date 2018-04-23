@@ -559,7 +559,6 @@ df20$Type <- str_replace_all(df20$Type,"FWYFWY","FWY")
 df20$Type <- str_replace_all(df20$Type,"^CIR$","CIRCLE") 
 sort(unique(df20$Type))
 ```
-***********************   stopped here Thursday Apr 12
 ```{r Check Street}
 #################################
 # Street
@@ -570,17 +569,6 @@ keepdf20 <- df20
 #  SOUTHWEST FWY, SOUTH FWY, EAST FWY, N SAM HOUSTON PKWY,
 #  HWY 6 N/S, N/S/E/W SAM HOUSTON PKWY, CROSBY FWY, GRAND PKWY,
 #  PASADENA FWY
-
-#   If address is in Street field, extract it and create a block range from it
-
-maskaddr <- grepl("^\\d{3,5}\\s",df20$Street)
-maskblk <- is.na(df20$Block_Range)
-sum(maskaddr&maskblk)
-addrs <- str_extract(df20$Street[maskaddr&maskblk],"^\\d{3,5}\\s")
-addrs <- as.integer((as.integer(addrs)/100))*100
-addrs <- paste(as.character(addrs), as.character(addrs+99),sep="-")
-df20$Block_Range[maskaddr&maskblk] <- addrs
-df20$Street <- str_replace_all(df20$Street,"^\\d{3,}\\s","")
 
 #####  Remove extra blanks, periods
 dictionary <- c(
@@ -1001,15 +989,13 @@ df20 <- applyregex(df20, "Street", dict)
 
 tail(head(sort(unique(df20$Street)),1900),100)
 
-
-####################   stopped here 27Mar
-
+keepdf20 <- df20
 #   Done
 
 #   Put ST/RD/DR/CT/BLVD/LN/AVE/CIRCLE/WAY into Type field and remove from Street field
 matchstring <- c(" ST$| RD$| DR$| LN$| WAY$| BLVD$| CIRCLE$| CT$| PL$| CIR$| AVE$")
 maska <- grepl(matchstring, df20$Street)
-masktype <- grepl("-", df20$Type)
+masktype <- grepl("^$", df20$Type)
 matched_values <- str_extract(df20$Street[maska&masktype],matchstring)
 df20$Type[maska&masktype] <- matched_values  #  put value into Type field
 df20$Street[maska&masktype] <- sub(matchstring, "", df20$Street[maska&masktype])  #  remove value from Street field
@@ -1017,10 +1003,6 @@ df20$Street[maska&masktype] <- sub(matchstring, "", df20$Street[maska&masktype])
 #   clean up extra space from Type field
 df20$Type <- str_replace(df20$Type,"^ *","")
 
-maska <- grepl(matchstring, df20$Street)
-matched_values <- str_extract(df20$Street[maska],matchstring)
-df20$Type[maska] <- matched_values  #  put value into Type field
-df20$Street[maska] <- sub(matchstring, "", df20$Street[maska])  #  remove value from Street field
 df20$Street[grepl("^$",df20$Street)] <- NA 
 
 tail(head(sort(unique(df20$Street)),100),100)
@@ -1045,7 +1027,6 @@ df20 <- applyregex(df20, "Street", dict)
 
 keepdf20 <- df20
 
-########################   stopped 12 Apr
 #####    work on highways separately
 #   Goals:
 #  EASTEX FWY, GULF FWY, KATY FWY, NORTH FWY, NORTHWEST FWY,
@@ -1088,7 +1069,6 @@ df20$Street[maskloop] <- str_replace(df20$Street[maskloop], "^E ","EAST ")
 df20$Street[maskloop] <- str_replace(df20$Street[maskloop], "^W ","WEST ")
 df20$Street[maskloop] <- str_replace(df20$Street[maskloop], "^N ","NORTH ")
 df20$Street[maskloop] <- str_replace(df20$Street[maskloop], "^S ","SOUTH ")
-df20$Street <- str_replace(df20$Street, "WEST LOOP SOUTH LOOP","WEST LOOP")
 sort(unique(df20$Street[maskloop]))
 
 #   settle on Katy Fwy, Gulf Fwy, North, East, South FWY's, and LOOP instead of 610,
@@ -1226,7 +1206,6 @@ maskout <- grepl("KATY|FWY|LOOP|EAST|NORTH|^[NSEW] ", df20$Street)
 sort(unique(df20$Street[mask&!maskout]))
 df20$Street[mask&!maskout] <- paste("W",df20$Street[mask&!maskout],sep=" ")
 
-df20$Street[grepl("^[NSEW] NA$",df20$Street)] <- NA
 keepdf20 <- df20
 
 dictionary <- c(
