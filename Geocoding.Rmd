@@ -51,6 +51,7 @@ workingset$Block_Range <- df$Block_Range
 workingset <- unique(workingset) # filter down to unique addresses
 #   kill off NA's
 workingset <- as.data.frame(workingset[!grepl("9 NA ,|UNK NA", workingset$Address),])
+workingset <- as.data.frame(workingset[!grepl("UNK ", workingset$Address),])
 
 # split out beginning and ending block addresses and street name
 workingset[,3] = str_extract(workingset$Address,"^\\d+")
@@ -140,20 +141,51 @@ sum(mask1)
 limit <- min(geocodeQueryCheck(), sum(mask1))
 # run geocode for each record up to the daily limit, and then average the lat/long
 # values from each end of the block to get a true block center value.
-
 Addresses <- paste(workingset$Add1[mask1][1:limit], workingset$Street[mask1][1:limit])
-AllLatLong <- geocode(Addresses, output="all") # geocode addresses
 
-latlongs <- map_df(AllLatLong, getfields) # extract desired fields
-#latlongs <- getfields(AllLatLong)
+zero = 0
+query = 0
+for (i in 1:limit) {
+  AllLatLong <- geocode(Addresses[i], output="all") # geocode addresses
 
-workingset$lon1[mask1][1:limit] = latlongs$Longitude
-workingset$lat1[mask1][1:limit] = latlongs$Latitude
-workingset$type[mask1][1:limit] = latlongs$types
-workingset$StreetName[mask1][1:limit] = latlongs$StreetName
-workingset$LocType[mask1][1:limit] = latlongs$LocType
+  #latlongs <- map_df(AllLatLong, getfields) # extract desired fields
+  latlongs <- getfields(AllLatLong)
 
-map_df(AllLatLong, testgeocode)
+  workingset$lon1[mask1][i] = latlongs$Longitude
+  workingset$lat1[mask1][i] = latlongs$Latitude
+  workingset$type[mask1][i] = latlongs$types
+  workingset$StreetName[mask1][i] = latlongs$StreetName
+  workingset$LocType[mask1][i] = latlongs$LocType
+  
+  #testgeocode(AllLatLong)
+  if(length(AllLatLong$results)==0){
+      print(paste("--->", AllLatLong$status))
+      if (AllLatLong$status == "OVER_QUERY_LIMIT") {
+        query <- query + 1
+      }
+      if (AllLatLong$status == "ZERO_RESULTS") {
+        zero <- zero + 1
+      }
+  }
+  
+  Sys.sleep(1)
+}
+
+print(paste("limit =",limit,", Over Query =",query,", Zero =",zero, " Pct fail =",query/limit))
+
+#Addresses <- paste(workingset$Add1[mask1][1:limit], workingset$Street[mask1][1:limit])
+#AllLatLong <- geocode(Addresses, output="all") # geocode addresses
+
+#latlongs <- map_df(AllLatLong, getfields) # extract desired fields
+##latlongs <- getfields(AllLatLong)
+
+#workingset$lon1[mask1][1:limit] = latlongs$Longitude
+#workingset$lat1[mask1][1:limit] = latlongs$Latitude
+#workingset$type[mask1][1:limit] = latlongs$types
+#workingset$StreetName[mask1][1:limit] = latlongs$StreetName
+#workingset$LocType[mask1][1:limit] = latlongs$LocType
+
+#map_df(AllLatLong, testgeocode)
 
 ##################  lather, rinse, repeat
 ```
@@ -200,7 +232,7 @@ for (i in 1:limit) {
       }
   }
   
-  Sys.sleep(2)
+  Sys.sleep(3)
 }
 
 print(paste("limit =",limit,", Over Query =",query,", Zero =",zero, " Pct fail =",query/limit))
@@ -344,6 +376,4 @@ newGeotable <- bind_rows(geotable, newGeotable)
 saveRDS(newGeotable, "~/Dropbox/CrimeStats/GeoTable.rds")
 
 ```
-
-
 
