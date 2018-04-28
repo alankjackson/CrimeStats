@@ -1,0 +1,169 @@
+---
+title: "CensusGeocoding"
+author: "Alan Jackson"
+date: "April 28, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r setup, include=FALSE}
+
+library(ggmap)
+library(stringr)
+library(tidyr)
+library(dplyr)
+library(purrr)
+
+# Long/Lat (lowerleft) Long/Lat (upper right)
+HoustonBoundary <- c(-95.789963, 29.518566, -95.005814, 30.117875)
+#gmap = get_map(location=c(-95.4142, 29.7907), source="google",zoom=12)
+
+googleproj4 <- "+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext  +no_defs"
+googlecrs <- "4326"
+
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Build a new data frame with only addresses, delete incomplete records, and
+join with last GeoTable so we don't go off and repeat work that has already
+been done.
+
+
+```{r Build a clean input for google geocode, eval=FALSE}
+# then clear up to only unique values and split each record in two, one for each
+# end of the block. Output will be a datafile of keys and addresses.
+
+df = readRDS("~/Dropbox/CrimeStats/District20gCleanData.rds")
+geotable <- readRDS("~/Dropbox/CrimeStats/GeoTableCen.rds")
+
+types <- sort(unique(df$Type))
+types <- types[types!="-"]
+types <- types[types!=""]
+for (t in types) {
+  maskstreet <- grepl(paste(" ",t,"$",sep=""), df$Street) 
+  masktype <- grepl(t,df$Type)
+  df$Street[!maskstreet&masktype] <- paste(df$Street[!maskstreet&masktype], df$Type[!maskstreet&masktype])
+}
+#   Build a new dataframe with addresses in it
+workcensus <- data.frame(paste(df$Block_Range,df$Street,", Houston, TX"), stringsAsFactors = FALSE)
+colnames(workcensus)[1] = "Address"
+
+workcensus$Block_Range <- df$Block_Range
+
+workcensus <- unique(workcensus) # filter down to unique addresses
+#   kill off NA's
+workcensus <- as.data.frame(workcensus[!grepl("9 NA ,|UNK NA", workcensus$Address),])
+workcensus <- as.data.frame(workcensus[!grepl("UNK ", workcensus$Address),])
+
+# split out beginning and ending block addresses and street name
+workcensus[,3] = str_extract(workcensus$Address,"^\\d+")
+workcensus[,4] = str_extract(workcensus$Address,"\\d+ ")
+workcensus[,5] = str_extract(workcensus$Address," .+$")
+colnames(workcensus)[3] = "Add1"
+colnames(workcensus)[4] = "Add2"
+colnames(workcensus)[5] = "Street"
+
+# delete records that are incomplete
+workcensus <- workcensus[complete.cases(workcensus),]
+
+# match with geotablecen to use lat long values that are already known
+workcensus <- left_join(workcensus, geotablecen, by="Address")
+workcensus <- select(workcensus, Address, Add1, Add2, Street.x, Longitude, Latitude)
+colnames(workcensus)[4]="Street"
+# toss rows that have lat long, as we don't need to worry about them.
+workcensus <- workcensus %>% filter(is.na(Longitude)|is.na(Latitude))
+
+```
+
+
+```{r import census geocoding}
+
+library(sf)
+googlecrs <- 4326
+
+Census <- read.csv(file="/home/ajackson/Downloads/GeocodeResults (4).csv", header=FALSE)
+
+names(Census) <- c("ID",	 "InputAddress", "Matching", "Quality", "MatchAddress", "LatLong", "TIGERID", "SideOfStreet")
+
+#   split latlong field (why is this necessary??)
+Census <- Census %>%
+  separate(LatLong, c("Lon", "Lat"), ",") %>%
+  mutate_at(vars(Lon:Lat), as.numeric, na.rm=TRUE)
+
+CensusNA <- Census[complete.cases(Census),]
+#   convert to WGS84 from NAD83
+
+# set input to NAD83
+CensusLL <- CensusNA[,c("Lon","Lat")]
+
+sfpoints <- st_as_sf(x = CensusLL, 
+                        coords = c("Lon", "Lat"),
+                        crs = "+proj=longlat +datum=NAD83")
+#  convert to WGS84
+pointswgs <- st_transform(sfpoints, crs=googlecrs)
+
+#   append to original data frame
+
+CensusNA <- cbind(as.data.frame(CensusNA), st_coordinates(pointswgs))
+
+Census <- left_join(Census, CensusNA, by="ID")
+Census <- Census %>%
+  select(ID,InputAddress.x, Matching.x, Quality.x, MatchAddress.x, Lon.x, Lat.x, X, Y)
+names(Census) <- c("ID",	 "InputAddress", "Matching", "Quality", "MatchAddress", "Lon", "Lat", "X", "Y")
+
+Census <- Census %>%
+  mutate(dist=sqrt((60.273*(Lon-X)**2 + (68.972*(Lat-Y))**2)))
+
+Census <- Census %>%
+  arrange(ID)
+#    join coordinates from Google
+
+workingLL <- workcensus %>%
+  select(lon1, lat1)
+Census <- bind_cols(Census, workingLL)
+Census <- Census %>%
+  mutate(googledist=5280*sqrt((60.273*(lon1-X)**2 + (68.972*(lat1-Y))**2)))
+
+Census %>%
+  mutate(feet_error=googledist) %>%
+  filter(feet_error<500) %>%
+  ggplot() +
+  geom_histogram(aes(x=feet_error))+
+  labs(title=paste("Google vs. Census Error in feet"), subtitle="all data < 500 ft")
+
+Census %>%
+  mutate(feet_error=googledist*5280) %>%
+  filter(Quality=="Exact", feet_error<500) %>%
+  ggplot() +
+  geom_histogram(aes(x=feet_error))+
+  labs(title=paste("Google vs. Census Error in feet"), subtitle="all data with exact fit")
+
+```
+
+
+
+```{r final merge and output}
+
+newGeotable <- workcensus %>% select(Address, Street, Block_Range, Longitude, Latitude, StreetName)
+names(newGeotable) <- c("Address", "Street", "Block_Range","Longitude", "Latitude", "GoogleName")
+
+#   Test to make sure no duplicates being created
+
+a <- bind_rows(geotablecen, newGeotable)
+dupd <- duplicated(a$Address) | duplicated(a$Address, fromLast = TRUE)
+dups <- a[dupd,]
+
+newGeotable <- newGeotable[complete.cases(newGeotable),]
+geotablecen <- geotablecen[complete.cases(geotablecen),]
+#   Append to old geotable
+newGeotable <- bind_rows(geotablecen, newGeotable)
+
+#   Save
+saveRDS(newGeotable, "~/Dropbox/CrimeStats/GeoTableCen.rds")
+
+```
