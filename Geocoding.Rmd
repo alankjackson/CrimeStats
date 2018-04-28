@@ -145,9 +145,11 @@ Addresses <- paste(workingset$Add1[mask1][1:limit], workingset$Street[mask1][1:l
 
 zero = 0
 query = 0
+numb = 0
 for (i in 1:limit) {
   AllLatLong <- geocode(Addresses[i], output="all") # geocode addresses
-
+  numb <- numb + 1
+  print(paste("----> ",numb," ",limit-numb))
   #latlongs <- map_df(AllLatLong, getfields) # extract desired fields
   latlongs <- getfields(AllLatLong)
 
@@ -168,7 +170,7 @@ for (i in 1:limit) {
       }
   }
   
-  Sys.sleep(1)
+  Sys.sleep(2)
 }
 
 print(paste("limit =",limit,", Over Query =",query,", Zero =",zero, " Pct fail =",query/limit))
@@ -209,8 +211,11 @@ Addresses <- paste(workingset$Add2[mask1][1:limit], workingset$Street[mask1][1:l
 
 zero = 0
 query = 0
+numb = 0
 for (i in 1:limit) {
   AllLatLong <- geocode(Addresses[i], output="all") # geocode addresses
+  numb <- numb + 1
+  print(paste("----> ",numb," ",limit-numb))
 
   #latlongs <- map_df(AllLatLong, getfields) # extract desired fields
   latlongs <- getfields(AllLatLong)
@@ -232,7 +237,7 @@ for (i in 1:limit) {
       }
   }
   
-  Sys.sleep(3)
+  Sys.sleep(1.5)
 }
 
 print(paste("limit =",limit,", Over Query =",query,", Zero =",zero, " Pct fail =",query/limit))
@@ -377,3 +382,78 @@ saveRDS(newGeotable, "~/Dropbox/CrimeStats/GeoTable.rds")
 
 ```
 
+Also try geocoding with the census bureau website. 10,000 per file
+limit.
+NAD83 output
+
+
+```{r export for geocoding}
+# https://geocoding.geo.census.gov/geocoder/locations/addressbatch?form
+Addresses <- paste(workingset$Add1, workingset$Street)
+write.csv(Addresses, file="/home/ajackson/addresses.txt", quote=FALSE, row.names=TRUE, col.names=FALSE)
+
+```
+
+```{r import census geocoding}
+
+library(sf)
+googlecrs <- 4326
+
+Census <- read.csv(file="/home/ajackson/Downloads/GeocodeResults (1).csv", header=FALSE)
+
+names(Census) <- c("ID",	 "InputAddress", "Matching", "Quality", "MatchAddress", "LatLong", "TIGERID", "SideOfStreet")
+
+#   split latlong field (why is this necessary??)
+Census <- Census %>%
+  separate(LatLong, c("Lon", "Lat"), ",") %>%
+  mutate_at(vars(Lon:Lat), as.numeric, na.rm=TRUE)
+
+CensusNA <- Census[complete.cases(Census),]
+#   convert to WGS84 from NAD83
+
+# set input to NAD83
+CensusLL <- CensusNA[,c("Lon","Lat")]
+
+sfpoints <- st_as_sf(x = CensusLL, 
+                        coords = c("Lon", "Lat"),
+                        crs = "+proj=longlat +datum=NAD83")
+#  convert to WGS84
+pointswgs <- st_transform(sfpoints, crs=googlecrs)
+
+#   append to original data frame
+
+CensusNA <- cbind(as.data.frame(CensusNA), st_coordinates(pointswgs))
+
+Census <- left_join(Census, CensusNA, by="ID")
+Census <- Census %>%
+  select(ID,InputAddress.x, Matching.x, Quality.x, MatchAddress.x, Lon.x, Lat.x, X, Y)
+names(Census) <- c("ID",	 "InputAddress", "Matching", "Quality", "MatchAddress", "Lon", "Lat", "X", "Y")
+
+Census <- Census %>%
+  mutate(dist=sqrt((60.273*(Lon-X)**2 + (68.972*(Lat-Y))**2)))
+
+Census <- Census %>%
+  arrange(ID)
+#    join coordinates from Google
+
+workingLL <- workingset %>%
+  select(lon1, lat1)
+Census <- bind_cols(Census, workingLL)
+Census <- Census %>%
+  mutate(googledist=5280*sqrt((60.273*(lon1-X)**2 + (68.972*(lat1-Y))**2)))
+
+Census %>%
+  mutate(feet_error=googledist) %>%
+  filter(feet_error<500) %>%
+  ggplot() +
+  geom_histogram(aes(x=feet_error))+
+  labs(title=paste("Google vs. Census Error in feet"), subtitle="all data < 500 ft")
+
+Census %>%
+  mutate(feet_error=googledist*5280) %>%
+  filter(Quality=="Exact", feet_error<500) %>%
+  ggplot() +
+  geom_histogram(aes(x=feet_error))+
+  labs(title=paste("Google vs. Census Error in feet"), subtitle="all data with exact fit")
+
+```
