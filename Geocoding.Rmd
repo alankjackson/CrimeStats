@@ -31,7 +31,7 @@ been done.
 # then clear up to only unique values and split each record in two, one for each
 # end of the block. Output will be a datafile of keys and addresses.
 
-df = readRDS("~/Dropbox/CrimeStats/District20gCleanData.rds")
+df = readRDS("~/Dropbox/CrimeStats/District18fCleanData.rds")
 geotable <- readRDS("~/Dropbox/CrimeStats/GeoTable.rds")
 
 types <- sort(unique(df$Type))
@@ -302,7 +302,7 @@ for (i in 1:length(a$Street)){
 write.csv(problemchildren, file="problemchildren.txt")
 #   null out lat/lon where streets don't match
 
-NullOut <- c( 338, 1889, 1952, 2181, 2196, 2220, 2264, 2349, 2355, 2372, 2394, 2401, 2411, 2436, 2459, 2496, 2579, 2603, 2639, 2681
+NullOut <- c( 3172 , 3244 , 3247 , 3268 , 3344 , 3368 , 3390 , 3400 , 3579 , 3581 , 3612 , 3633 , 3643 , 3650 , 3698 , 3699 , 3748 , 3762 , 3774 , 3781 , 3782 , 3796 , 3797 , 3823 , 3829 , 3836 , 3838 , 3840 , 3848 , 3912 , 3928 , 3931 , 3944 , 3973 , 3976 , 4017 , 4039 , 4042 , 4047 , 4052 , 4058 , 4068 , 4075 , 4095 , 4103 , 4104 , 4114 , 4144 , 4149 , 4157 , 4158 , 4170 , 4234 , 4248 , 4254 , 4269 , 4290 , 4311 , 4332 
 )
 
 for (i in NullOut) {workingset$lat1[i] <- NA
@@ -319,7 +319,8 @@ for (i in 1:length(a$Street)){
 }
 write.csv(problemchildren, file="problemchildren.txt")
 
-NullOut <- c(338, 1286, 1348, 1518, 1738, 1952, 2030, 2062, 2101, 2187, 2218, 2337, 2349, 2355, 2372, 2411, 2436, 2459, 2496, 2603, 2639, 2681
+NullOut <- c(3025 , 3048 , 3247 , 3257 , 3268 , 3336 , 3368 , 3390 , 3400 , 3422 , 3581 , 3612 , 3633 , 3650 , 3698 , 3716 , 3748 , 3762 , 3774 , 3796 , 3797 , 3808 , 3815 , 3823 , 3836 , 3840 , 3853 , 3928 , 3931 , 3933 , 3969 , 3972 , 3973 , 4017 , 4042 , 4047 , 4052 , 4058 , 4068 , 4095 , 4103 , 4104 , 4106 , 4114 , 4144 , 4149 , 4157 , 4158 , 4167 , 4234 , 4244 , 4248 , 4254 , 4269 , 4284 , 4290 , 4299 , 4311 , 4332
+
 )
 for (i in NullOut) {workingset$lat2[i] <- NA
                     workingset$lon2[i] <- NA
@@ -337,7 +338,7 @@ filter(distance, distance>0.01&distance<5*meddist) %>%
   xlab("miles")
 
 bogus <- distance>meddist
-bogus <- distance>1
+bogus <- distance>3
 
 problemchildren <- workingset[bogus,]
 problemchildren <- problemchildren %>%
@@ -399,7 +400,7 @@ write.csv(Addresses, file="/home/ajackson/addresses.txt", quote=FALSE, row.names
 library(sf)
 googlecrs <- 4326
 
-Census <- read.csv(file="/home/ajackson/Downloads/GeocodeResults (1).csv", header=FALSE)
+Census <- read.csv(file="/home/ajackson/Downloads/GeocodeResults (4).csv", header=FALSE)
 
 names(Census) <- c("ID",	 "InputAddress", "Matching", "Quality", "MatchAddress", "LatLong", "TIGERID", "SideOfStreet")
 
