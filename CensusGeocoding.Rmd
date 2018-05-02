@@ -5,9 +5,6 @@ date: "April 28, 2018"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
 
 
 ```{r setup, include=FALSE}
@@ -17,6 +14,7 @@ library(stringr)
 library(tidyr)
 library(dplyr)
 library(purrr)
+library(sf)
 
 # Long/Lat (lowerleft) Long/Lat (upper right)
 HoustonBoundary <- c(-95.789963, 29.518566, -95.005814, 30.117875)
@@ -80,13 +78,22 @@ workcensus <- workcensus %>% filter(is.na(Longitude)|is.na(Latitude))
 
 ```
 
+Export file for running on census website
+https://geocoding.geo.census.gov/geocoder/locations/addressbatch?form
+then import the results and continue
+
+```{r export address file}
+
+Addresses <- paste(workcensus$Add1, workcensus$Street,",")
+write.table(Addresses, file="/home/ajackson/addresses.txt", quote=FALSE, row.names=TRUE, col.names=FALSE, sep=",")
+
+```
+
 
 ```{r import census geocoding}
 
-library(sf)
-googlecrs <- 4326
 
-Census <- read.csv(file="/home/ajackson/Downloads/GeocodeResults (4).csv", header=FALSE)
+Census <- read.csv(file="/home/ajackson/Downloads/GeocodeResults (5).csv", header=FALSE)
 
 names(Census) <- c("ID",	 "InputAddress", "Matching", "Quality", "MatchAddress", "LatLong", "TIGERID", "SideOfStreet")
 
@@ -113,35 +120,37 @@ CensusNA <- cbind(as.data.frame(CensusNA), st_coordinates(pointswgs))
 
 Census <- left_join(Census, CensusNA, by="ID")
 Census <- Census %>%
-  select(ID,InputAddress.x, Matching.x, Quality.x, MatchAddress.x, Lon.x, Lat.x, X, Y)
+  select(ID,InputAddress.x, Matching.x, Quality.x, MatchAddress.x, Lon.x, Lat.x, Lon.y, Lat.y)
 names(Census) <- c("ID",	 "InputAddress", "Matching", "Quality", "MatchAddress", "Lon", "Lat", "X", "Y")
 
 Census <- Census %>%
-  mutate(dist=sqrt((60.273*(Lon-X)**2 + (68.972*(Lat-Y))**2)))
+  mutate(dist=5280*sqrt((60.273*(Lon-X)**2 + (68.972*(Lat-Y))**2)))
 
 Census <- Census %>%
   arrange(ID)
-#    join coordinates from Google
 
-workingLL <- workcensus %>%
-  select(lon1, lat1)
-Census <- bind_cols(Census, workingLL)
+```
+
+
+```{r look for issues}
+
 Census <- Census %>%
-  mutate(googledist=5280*sqrt((60.273*(lon1-X)**2 + (68.972*(lat1-Y))**2)))
+  select(ID,InputAddress, Matching, Quality, MatchAddress, X, Y) %>%
+  filter(Matching=="Match")
 
-Census %>%
-  mutate(feet_error=googledist) %>%
-  filter(feet_error<500) %>%
-  ggplot() +
-  geom_histogram(aes(x=feet_error))+
-  labs(title=paste("Google vs. Census Error in feet"), subtitle="all data < 500 ft")
+keepCensus <- Census
+#   Turn some "Exact" into "Non_Exact"
 
-Census %>%
-  mutate(feet_error=googledist*5280) %>%
-  filter(Quality=="Exact", feet_error<500) %>%
-  ggplot() +
-  geom_histogram(aes(x=feet_error))+
-  labs(title=paste("Google vs. Census Error in feet"), subtitle="all data with exact fit")
+Census <- keepCensus
+Census <- Census %>% mutate(ad1=toupper(str_replace_all(InputAddress," ","")), ad2=str_replace_all(MatchAddress," ",""), MatchQuality="")
+  
+for (i in 1:nrow(Census)) {
+  if (grepl(Census$ad1[i],Census$ad2[i])) {
+    Census$MatchQuality[i] <- "Exact"
+  } else {Census$MatchQuality[i] <- "Not_Exact"}
+  
+}
+
 
 ```
 
