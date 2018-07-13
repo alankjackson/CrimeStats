@@ -40,6 +40,7 @@ df = readRDS("~/Dropbox/CrimeStats/District20gCleanData.rds")
 geotable <- readRDS("~/Dropbox/CrimeStats/GeoTableCen.rds")
 
 types <- sort(unique(df$Type))
+
 types <- types[types!="-"]
 types <- types[types!=""]
 for (t in types) {
