@@ -68,3 +68,19 @@ For HPD data:
             Houston_Police_Beats.shp
             
             Houston_Police_Beats.rds - output file
+
+
+
+<h4>Geocoding is hard</h4>
+
+<p>
+Started using Google, but with a few hundred thousand addresses, the 2500 per day limit was a killer. So instead used the census bureau geocoder, which got about 2/3 of the addresses okay. The biggest problem with teh census geocoder I found was that it would basically ignore the direction indicator on a street name (N,S,E,W) and sometimes give the wrong location (S Shepherd instead of N Sheperd), and claim tha it had a perfect match! So I did a double check on the matches myself and only accepted those that that claimed a perfect match and also regurgitated a street name that matched the input. Took the 1/3 that failed that process, and fed those to Google (some 30,000 addresses). Two weeks later, I had matches for those - and a zip code. Now I could go back and use the Google addresses, the census addresses, and geocode with the census for the other end of the block.
+</p>
+
+<ol>
+<li>PrepCensusGeocode.R - read in all the files and create files suitable for the census batch geocoder, each file with 10,000 records.</li>
+<li>Run geocoder batch: https://geocoding.geo.census.gov/geocoder/locations/addressbatch?form </li>
+<li>ReadCensusGeocode.R - read in the output from the census batch geocoder, export matches to Master_Geocode.rds, export non-matches to partialgeocode.rds for later input to google</li>
+<li>GetZipcode.r - geocode using Google up to the daily limit. Save output to GoogleLocationsMaster.rds</li>
+<li>MakeBlockCenter.Rmd - Read in both geocoded files, use best address and add 99 to address, then geocode that address with census tool, average location to get block center, and save to GeocodeMaster.rmd</li>
+</ol>
