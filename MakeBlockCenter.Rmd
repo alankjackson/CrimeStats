@@ -1,0 +1,129 @@
+---
+title: "Make Block Center"
+author: "Alan Jackson"
+date: "July 13, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+library(jsonlite)
+library(RCurl)
+library("tidyverse")
+library("stringr") # string tools
+
+options(stringsAsFactors = FALSE)
+
+census_geocoder <- function(address,type,secondary,state){
+    addy <- paste("street=",gsub(" ","+",address),sep="")
+    if(type=="z"){
+          wild <- paste("zip=",gsub(" ","+",secondary),sep="")
+        }else{
+          wild <- paste("city=",gsub(" ","+",secondary),sep="")
+    }
+    
+    state <- paste("state=",gsub(" ","+",state),sep="") 
+    string <-  paste("https://geocoding.geo.census.gov/geocoder/geographies/address?",addy,"&",wild,"&",state,"&benchmark=4&vintage=4&format=json",sep="")
+    json_file<-fromJSON(getURL(string))
+
+    #Check if there are results
+    if(length(json_file$result$addressMatches)>0){
+      
+      #If not, kick back an empty dataframe
+      if(is.null(json_file$result$addressMatches$coordinates$x[1])==TRUE){
+        print("no result")
+        return(data.frame(
+          address="",
+          lat = "",
+          lon= "",
+          tract = "",
+          block = ""))
+        
+      } else{
+
+        #  Address,lat,lon,tract, block (keep first match)
+        address <- as.character(data.frame(json_file$result$addressMatches$matchedAddress)[1,])
+        lat <- as.character(json_file$result$addressMatches$coordinates$y[1])
+        lon <- as.character(json_file$result$addressMatches$coordinates$x[1])
+        tract <- data.frame(json_file$result$addressMatches$geographies$`Census Tracts`)$GEOID[1]
+        block <- data.frame(json_file$result$addressMatches$geographies$`2010 Census Blocks`)[1,c("GEOID")]
+
+        return(data.frame(
+                address = address,
+                lat = lat,
+                lon = lon,
+                tract = tract,
+                block = block))
+    
+      }
+    }
+}
+
+
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Read in geocoded files
+
+Read in both geocoded files, use best address and add 99 to address, then geocode that address with census tool, average location to get block center, and save to GeocodeMaster.rmd
+
+```{r read in files, merge, and create new addresses}
+
+file1 <- readRDS("~/Dropbox/CrimeStats/Master_Geocode.rds")
+file2 <- readRDS("~/Dropbox/CrimeStats/GoogleLocationsMaster.rds")
+
+# New dataframe will have ID, Address, Lat1, Lon1, Lat2, Lon2, NewAddress
+
+ff <- file1 %>%
+  mutate(Lat1=as.numeric(strsplit(LatLong,",")[[1]][2]),    
+         Lon1=as.numeric(strsplit(LatLong,",")[[1]][1])) %>%
+  select(ID, Address=MatchAddress, Lat1, Lon1) %>%
+  bind_rows(., 
+            select(file2, ID, Address=StreetName, Lat1=lat1, Lon1=lon1) ) %>%
+  mutate(Lat2=NA, Lon2=NA) %>%
+  mutate(NewAddress=str_replace(Address,"^([0-9]*)00 ", "\\199 "))
+  
+
+```
+
+##   Use census geocoder to get lat longs
+
+```{r census geocoding}
+
+## Geocode the addresses
+
+
+ff$match <- NA
+ff$lat <- NA
+ff$lon <- NA
+ff$tract <- NA
+ff$block <- NA
+
+for (i in 1:nrow(ff)) {
+  answer <- NULL
+  attempt <- 1
+  while( is.null(answer) && attempt <= 3 ) {
+    if (attempt>1){print(paste("attempted", attempt))}
+    attempt <- attempt + 1
+    try(
+      answer <- census_geocoder(strsplit(ff$NewAddress[i],",")[[1]][1], "z",
+                                strsplit(ff$NewAddress[i],",")[[1]][4], "TX")
+    )
+  } 
+  print(paste(i,":",ff$NewAddress[i], answer[1]))
+  if (!is.null(answer) && nchar(answer$address)>0){
+    ff$match[i] <- answer[[1]]
+    ff$lat[i] <- answer[[2]]
+    ff$lon[i] <- answer[[3]]
+    ff$tract[i] <- answer[[4]]
+    ff$block[i] <- answer[[5]]
+  }
+  Sys.sleep(1)
+}
+
+save.image()
+
+
+```
+
