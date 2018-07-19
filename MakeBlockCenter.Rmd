@@ -131,3 +131,100 @@ saveRDS(ff, file=paste("~/Dropbox/CrimeStats/FinalGeodata.rds",sep=""))
 
 ```
 
+##  Take last uncoded addresses and run through google
+
+
+```{r google geocode}
+
+library(ggmap)
+library(stringr)
+library(tidyr)
+library(dplyr)
+library(purrr)
+
+options(stringsAsFactors = FALSE)
+
+#   Empty dataframe for accepting lat long values
+latlongs <- data.frame(types=character(),
+                       Latitude=numeric(), 
+                       Longitude=numeric(), 
+                       type=character(),
+                       StreetName=character(),
+                       LocType=character(),
+                       stringsAsFactors=FALSE) 
+
+#   Function for pulling fields out of nested lists returned by geocode
+getfields <- function(x){
+  if(! is.na(x) && length(x$results)>0)  {data.frame(
+    Latitude=as.numeric(x$results[[1]]$geometry$location$lat),
+    Longitude=as.numeric(x$results[[1]]$geometry$location$lng),
+    types=x$results[[1]]$types[1],
+    StreetName=x$results[[1]]$formatted_address,
+    LocType=x$results[[1]]$geometry$location_type,
+    stringsAsFactors = FALSE)
+  } else if ("status" %in% names(x) && x$status=="ZERO_RESULTS"){
+    data.frame(types=x$status,Latitude=NA,Longitude=NA, StreetName=NA,LocType=NA,stringsAsFactors = FALSE)
+  } else{
+    data.frame(types=NA,Latitude=NA,Longitude=NA, StreetName=NA,LocType=NA,stringsAsFactors = FALSE)
+  }
+}
+
+testgeocode <- function(x){
+  if(length(x$results)==0){
+    print(paste("--->", x$status))
+  }
+}
+
+ffnew <- ff[is.na(ff$match),] # grab only rows with no match
+ffnew <- ffnew[!duplicated(ffnew$NewAddress),] # get rid of duplicates
+
+#--------------  repeat from here
+
+geocodeQueryCheck()
+mask1 <- (is.na(ffnew$lon) | is.na(ffnew$lat))& ((ffnew$type != "ZERO_RESULTS") | is.na(ffnew$type))
+
+sum(mask1)
+limit <- min(geocodeQueryCheck(), sum(mask1))
+# run geocode for each record up to the daily limit, and then average the lat/long
+# values from each end of the block to get a true block center value.
+#Addresses <- paste(ffnew$Add1[mask1][1:limit], ffnew$Street[mask1][1:limit])
+
+zero = 0
+query = 0
+numb = 0
+for (i in 1:limit) {
+  AllLatLong <- geocode(ffnew$InputAddress[mask1][i], output="all") # geocode addresses
+  numb <- numb + 1
+  print(paste("----> ",numb," ",limit-numb))
+  #latlongs <- map_df(AllLatLong, getfields) # extract desired fields
+  latlongs <- getfields(AllLatLong)
+  
+  ffnew$lon[mask1][i] = latlongs$Longitude
+  ffnew$lat[mask1][i] = latlongs$Latitude
+  ffnew$type[mask1][i] = latlongs$types
+  ffnew$StreetName[mask1][i] = latlongs$StreetName
+  ffnew$LocType[mask1][i] = latlongs$LocType
+  
+  #testgeocode(AllLatLong)
+  if(length(AllLatLong$results)==0){
+    print(paste("--->", AllLatLong$status))
+    if (AllLatLong$status == "OVER_QUERY_LIMIT") {
+      query <- query + 1
+    }
+    if (AllLatLong$status == "ZERO_RESULTS") {
+      zero <- zero + 1
+    }
+  }
+  
+  Sys.sleep(2)
+}
+
+print(paste("limit =",limit,", Over Query =",query,", Zero =",zero, " Pct fail =",query/limit))
+save.image()
+
+#   Save temporary results
+
+saveRDS(ffnew, file="~/Dropbox/CrimeStats/ffnew.rds")
+
+```
+
