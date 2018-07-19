@@ -6,6 +6,7 @@ library(tidyr)
 library(dplyr)
 library(purrr)
 
+options(stringsAsFactors = FALSE)
 
 dfgoogle = readRDS("~/Dropbox/CrimeStats/partialgeocode.rds")
 
@@ -97,5 +98,5 @@ save.image()
 
 #   Save temporary results
 
-
+saveRDS(dfgoogle, file="~/Dropbox/CrimeStats/GoogleLocationsMaster.rds")
 
