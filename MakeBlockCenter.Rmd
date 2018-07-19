@@ -100,7 +100,9 @@ ff$lon <- NA
 ff$tract <- NA
 ff$block <- NA
 
-for (i in 1:nrow(ff)) {
+ff$NewAddress <- str_replace(ff$NewAddress, "TX ", "TX, ")
+
+for (i in 77001:nrow(ff)) {
   answer <- NULL
   attempt <- 1
   while( is.null(answer) && attempt <= 3 ) {
@@ -120,10 +122,12 @@ for (i in 1:nrow(ff)) {
     ff$block[i] <- answer[[5]]
   }
   Sys.sleep(1)
+  if (i%%1000==0){save.image()}
 }
 
 save.image()
 
+saveRDS(ff, file=paste("~/Dropbox/CrimeStats/FinalGeodata.rds",sep=""))
 
 ```
 
