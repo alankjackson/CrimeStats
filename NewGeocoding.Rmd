@@ -8,10 +8,16 @@ output: html_document
 ```{r setup, include=FALSE}
 
 library(tidyverse)
+library(stringr)
 
 reclean <- c("District1aReCleanData.rds", 
              "District2aReCleanData.rds")
 recleanpath <- "~/Dropbox/CrimeStats/"
+
+dflist <- vector(mode = "list", length = 2)
+for (i in 1:2) {
+    dflist[[i]] <- readRDS(paste0(recleanpath, reclean[i]))
+}
 
 knitr::opts_chunk$set(echo = TRUE)
 ```
@@ -29,10 +35,28 @@ oldgeotable <- readRDS("~/Dropbox/CrimeStats/GeoTable.rds")
 
 # Read in clean data files
 
+df <- dplyr::bind_rows(dflist)
+
 # join geotable to reclean files
+
+  # first create address in df: 
+  # Block_Range + Suffix + Street + Type + ", Houston, TX"
+
+df$Address <- paste(df$Block_Range, df$Suffix, df$Street, df$Type, ", Houston, TX")
+df$Address <- str_replace_all(df$Address, "- ", "")
+
+df <- dplyr::left_join(df, oldgeotable, by="Address")
 
 # pull out records not matched
 
+unmatched <- df %>%
+  filter(is.na(GoogleName)) %>%
+  select(Address)
 
 ```
+
+##  Census Geocoding
+
+Call census geocoder for first and last address, and on success
+average the two answers and add in the lat long values as well as other good stuff.
 
