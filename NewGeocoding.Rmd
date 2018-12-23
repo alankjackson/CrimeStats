@@ -1,0 +1,38 @@
+---
+title: "ReCreate Geocode File"
+author: "Alan Jackson"
+date: "December 22, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+library(tidyverse)
+
+reclean <- c("District1aReCleanData.rds", 
+             "District2aReCleanData.rds")
+recleanpath <- "~/Dropbox/CrimeStats/"
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Pull coordinates from old geocoding files
+
+Pull old coordinates and attach to ReClean files
+
+
+```{r oldgeocode}
+
+# get old geotable
+
+oldgeotable <- readRDS("~/Dropbox/CrimeStats/GeoTable.rds")
+
+# Read in clean data files
+
+# join geotable to reclean files
+
+# pull out records not matched
+
+
+```
+
