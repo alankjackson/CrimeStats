@@ -74,7 +74,7 @@ Census_decoder <- function(address, city=NA, state=NA, zip=NA){
     print(paste("+++>",status, match_address, lat,lon,tract,block))
     return(data.frame(
       status="fail",
-      matching_address=NA,
+      match_address=NA,
       lat=NA,
       long=NA,
       tract=NA,
@@ -88,7 +88,7 @@ Census_decoder <- function(address, city=NA, state=NA, zip=NA){
       print(paste("+++>",status, match_address, lat,lon,tract,block))
       return(data.frame(
         status="fail",
-        matching_address=NA,
+        match_address=NA,
         lat=NA,
         long=NA,
         tract=NA,
@@ -180,11 +180,12 @@ getlatlong <- function(addr){
   if (loc1[1]=="fail" || loc2[1]=="fail") {
     return(data.frame(
       status="fail",
-      matching_address=NA,
+      match_address=NA,
       lat=NA,
       long=NA,
       tract=NA,
       block=NA,
+      distance=NA,
       stringsAsFactors = FALSE
     ))
   }
@@ -192,37 +193,41 @@ getlatlong <- function(addr){
   #   does the new street match the old street?
   
   x <- unlist(strsplit(loc1$match_address, ","))
-  newstreet <- trimws(sub("^[0-9]+-[0-9]+", "", x[1]))
+  newstreet <- trimws(sub("^[0-9]+", "", x[1]))
+  print(newstreet)
   if (street != newstreet) {
     return(data.frame(
       status="failmatch",
-      matching_address=loc1$match_address,
+      match_address=loc1$match_address,
       lat=NA,
       long=NA,
       tract=NA,
       block=NA,
+      distance=NA,
       stringsAsFactors = FALSE
     ))
   }
   
   #   Look at distance between results
   
-  distance <- sqrt((loc1$lat- loc2$lat)**2 + 
-                   (loc1$long- loc2$long)**2)* 69 # approx in miles
+  distance <- sqrt((loc1[3] - loc2[3])**2 + 
+                   (loc1[4] - loc2[4])**2)* 69 # approx in miles
   print(paste("distance =", distance))
+  print("=============")
   
   #   Average coordinates and check tract and block match
   
-  lat <- (loc1$lat + loc2$lat)/2
-  long <- (loc1$long + loc2$long)/2
+  lat <- (loc1[3] + loc2[3])/2
+  long <- (loc1[4] + loc2[4])/2
   
   return(data.frame(
     status="success",
-    matching_address=loc1$match_address,
+    match_address=loc1$match_address,
     lat=lat,
     long=long,
-    tract=loc1$tract,
-    block=loc1$block,
+    tract=loc1[5],
+    block=loc1[6],
+    distance=distance,
     stringsAsFactors = FALSE
   ))
   
@@ -234,7 +239,8 @@ getlatlong <- function(addr){
 
 for (i in 1:10) {
   print(paste("--->",unmatched[i,]))
-  getlatlong(unmatched[i,])
+  latlong <- getlatlong(unmatched[i,])
+  print(paste("--final--",latlong[1,]))
 }
 
 ```
