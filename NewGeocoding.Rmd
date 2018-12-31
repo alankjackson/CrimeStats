@@ -46,17 +46,11 @@ Returns will be:
 * block
 
 ```{r geocoder}
-Census_decoder <- function(address, city=NA, state=NA, zip=NA){
- 
+
+GetResult <- function(urlreq) {
   #  required libraries 
   
   require(httr)
-  
-  urlreq <- paste0("https://geocoding.geo.census.gov/geocoder/geographies/address?street=",gsub(" ", "+",address))
-  if (!is.na(city)){urlreq <- paste0(urlreq,"&city=", city)}
-  if (!is.na(state)){urlreq <- paste0(urlreq,"&state=", state)}
-  if (!is.na(zip)){urlreq <- paste0(urlreq,"&zip=", zip)}
-  urlreq <- paste0(urlreq,"&benchmark=Public_AR_Current&vintage=Current_Current&format=json")
   
   #   set up to retry twice on server type error (which usually works)
   attempt <- 1
@@ -69,11 +63,26 @@ Census_decoder <- function(address, city=NA, state=NA, zip=NA){
       result <- httr::GET(urlreq)
     )
   }
+  return(result)
+}
+
+Census_decoder <- function(address, city=NA, state=NA, zip=NA){
+ 
+  
+  urlreq <- paste0("https://geocoding.geo.census.gov/geocoder/geographies/address?street=",gsub(" ", "+",address))
+  if (!is.na(city)){urlreq <- paste0(urlreq,"&city=", city)}
+  if (!is.na(state)){urlreq <- paste0(urlreq,"&state=", state)}
+  if (!is.na(zip)){urlreq <- paste0(urlreq,"&zip=", zip)}
+  urlreq <- paste0(urlreq,"&benchmark=Public_AR_Current&vintage=Current_Current&format=json")
+  
+  print(urlreq)
+  result <- GetResult(urlreq)
+  
   #     did we succeed?
   if (result$status_code != 200) { # failure
-    print(paste("+++>",status, match_address, lat,lon,tract,block))
+    print("+1+>")
     return(data.frame(
-      status="fail",
+      status="fail_code",
       match_address=NA,
       lat=NA,
       long=NA,
@@ -81,13 +90,30 @@ Census_decoder <- function(address, city=NA, state=NA, zip=NA){
       block=NA,
       stringsAsFactors = FALSE
     ))
-  } else { # successful response
-    result <- httr::content(result)
-    Num_matches <- length(result[["result"]][["addressMatches"]])
-    if (Num_matches <= 0) { # failed to find address
-      print(paste("+++>",status, match_address, lat,lon,tract,block))
+  } else {
+  result <- httr::content(result)
+  Num_matches <- length(result[["result"]][["addressMatches"]])
+  
+  if (Num_matches <= 0) { # failed to find address
+    print("+2+>")
+    return(data.frame(
+      status="fail_length",
+      match_address=NA,
+      lat=NA,
+      long=NA,
+      tract=NA,
+      block=NA,
+      stringsAsFactors = FALSE
+    ))
+  }
+    
+    # pick last result if multiples offered
+    temp <- result[["result"]][["addressMatches"]][[Num_matches]]
+    tract <- temp[["geographies"]][["2010 Census Blocks"]][[1]][["TRACT"]]
+    if (is.null(tract)){
+      print("+3+>")
       return(data.frame(
-        status="fail",
+        status="fail_tract",
         match_address=NA,
         lat=NA,
         long=NA,
@@ -97,14 +123,13 @@ Census_decoder <- function(address, city=NA, state=NA, zip=NA){
       ))
     }
     status <- "success"
-    temp <- result[["result"]][["addressMatches"]][[Num_matches]]
     #####   debug
     match_address=temp[["matchedAddress"]] 
     lat=temp[["coordinates"]][["y"]]
     lon=temp[["coordinates"]][["x"]]
-    tract= temp[["geographies"]][["Census Tracts"]][[1]][["TRACT"]]
+    tract=temp[["geographies"]][["2010 Census Blocks"]][[1]][["TRACT"]]
     block=temp[["geographies"]][["2010 Census Blocks"]][[1]][["BLOCK"]]
-    print(paste("+++>",status, match_address, lat,lon,tract,block))
+    print(paste("+4+>",status, match_address, lat,lon,tract,block))
     #####  end debug
     
     return(data.frame(
@@ -142,6 +167,7 @@ df <- dplyr::bind_rows(dflist)
 
 df$Address <- paste(df$Block_Range, df$Suffix, df$Street, df$Type, ", Houston, TX")
 df$Address <- str_replace_all(df$Address, "- ", "")
+df$Address <- str_replace_all(df$Address, "  ", " ")
 
 df <- dplyr::left_join(df, oldgeotable, by="Address")
 
@@ -149,9 +175,11 @@ df <- dplyr::left_join(df, oldgeotable, by="Address")
 
 unmatched <- df %>%
   filter(is.na(GoogleName)) %>%
+  filter(!grepl("^UNK", Block_Range.x)) %>%
+  filter(!grepl(" NA ", Address)) %>%
   select(Address) %>%
   distinct() %>%
-  filter(!grepl("^UNK", Address))
+  filter(!grepl("^UNK", Address)) 
 
 ```
 
@@ -168,6 +196,7 @@ getlatlong <- function(addr){
   state <- trimws(x[3])
   adr1 <- unlist(strsplit(str_extract(x[1], "^[0-9]+-[0-9]+"),"-"))[1]
   if (adr1=="0") {adr1 <- "1"} # census dislikes address of zero
+  adr1 <- str_replace(adr1, "0$", "1")# dislikes address ending in 0
   adr2 <- unlist(strsplit(str_extract(x[1], "^[0-9]+-[0-9]+"),"-"))[2]
   street <- trimws(sub("^[0-9]+-[0-9]+", "", x[1]))
   
@@ -177,7 +206,8 @@ getlatlong <- function(addr){
   # If both succeed, then return average location. If either fails,
   # return failure. Also check directional prefix
   
-  if (loc1[1]=="fail" || loc2[1]=="fail") {
+  if (loc1[1]!="success" || loc2[1]!="success") {
+    print("failure 1")
     return(data.frame(
       status="fail",
       match_address=NA,
@@ -194,8 +224,9 @@ getlatlong <- function(addr){
   
   x <- unlist(strsplit(loc1$match_address, ","))
   newstreet <- trimws(sub("^[0-9]+", "", x[1]))
-  print(newstreet)
+  #print(newstreet)
   if (street != newstreet) {
+    print(paste("failure 2", street, newstreet))
     return(data.frame(
       status="failmatch",
       match_address=loc1$match_address,
@@ -212,8 +243,8 @@ getlatlong <- function(addr){
   
   distance <- sqrt((loc1[3] - loc2[3])**2 + 
                    (loc1[4] - loc2[4])**2)* 69 # approx in miles
-  print(paste("distance =", distance))
-  print("=============")
+  #print(paste("distance =", distance))
+  #print("=============")
   
   #   Average coordinates and check tract and block match
   
@@ -237,11 +268,50 @@ getlatlong <- function(addr){
 ##    spin through data geocoding
 #####################################
 
-for (i in 1:10) {
-  print(paste("--->",unmatched[i,]))
+newlymatched <- data.frame(
+  old_address=character(),
+  match_address=character(),
+  lat=double(),
+  long=double(),
+  tract=character(),
+  block=character(),
+  distance=double(),
+  stringsAsFactors = FALSE
+)
+newunmatched <- data.frame(
+  old_address=character(),
+  match_address=character(),
+  lat=double(),
+  long=double(),
+  tract=character(),
+  block=character(),
+  distance=double(),
+  stringsAsFactors = FALSE
+)
+
+for (i in 1:nrow(unmatched)) {
+#for (i in 2731:2734) {
+  print(paste("--->",i,unmatched[i,]))
   latlong <- getlatlong(unmatched[i,])
-  print(paste("--final--",latlong[1,]))
+  if (latlong$status=="success") {
+    #print(paste("--final--",latlong[1,]))
+    latlong <- cbind(unmatched[i,], latlong)
+    names(latlong)[names(latlong)=="lat.1"] <- "distance"
+    newlymatched <- rbind(newlymatched, latlong)
+    newlymatched[,1] <- as.character(newlymatched[,1])
+  } else {
+    latlong <- cbind(unmatched[i,], latlong)
+    names(latlong)[names(latlong)=="lat.1"] <- "distance"
+    newunmatched <- rbind(newunmatched, latlong)
+    newunmatched[,1] <- as.character(newunmatched[,1])
+  }
 }
+newlymatched[,1] <- as.character(newlymatched[,1])
+names(newlymatched)[names(newlymatched)=="unmatched[i, ]"] <- "oldaddress"
+
+saveRDS(newlymatched, "~/Dropbox/CrimeStats/CensusGeoTable.rds")
+
+
 
 ```
 
