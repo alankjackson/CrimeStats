@@ -9,6 +9,7 @@ output: html_document
 
 library(tidyverse)
 library(stringr)
+library(dplyr)
 
 reclean <- c("District1aReCleanData.rds", 
              "District2aReCleanData.rds")
@@ -223,10 +224,13 @@ getlatlong <- function(addr){
   #   does the new street match the old street?
   
   x <- unlist(strsplit(loc1$match_address, ","))
-  newstreet <- trimws(sub("^[0-9]+", "", x[1]))
+  newstreet1 <- trimws(sub("^[0-9]+", "", x[1]))
+  x <- unlist(strsplit(loc2$match_address, ","))
+  newstreet2 <- trimws(sub("^[0-9]+", "", x[1]))
   #print(newstreet)
-  if (street != newstreet) {
-    print(paste("failure 2", street, newstreet))
+  if (street != newstreet1 && street != newstreet2) {
+    print(paste("failure 2", street, newstreet1, newstreet2, 
+                sep=" : "))
     return(data.frame(
       status="failmatch",
       match_address=loc1$match_address,
@@ -237,6 +241,17 @@ getlatlong <- function(addr){
       distance=NA,
       stringsAsFactors = FALSE
     ))
+  } else if (street != newstreet1 || street != newstreet2) {
+    # Find good address and borrow zip to fix bad address
+    if (street == newstreet1){
+      print("street == newstreet1")
+      zip <- last(unlist(str_split(loc1$match_address," ")))
+      loc2 <- Census_decoder(paste(adr2, street), city, zip=zip)
+    } else {
+      print("street == newstreet2")
+      zip <- last(unlist(str_split(loc2$match_address," ")))
+      loc1 <- Census_decoder(paste(adr1, street), city, zip=zip)
+    }
   }
   
   #   Look at distance between results
@@ -311,7 +326,31 @@ names(newlymatched)[names(newlymatched)=="unmatched[i, ]"] <- "oldaddress"
 
 saveRDS(newlymatched, "~/Dropbox/CrimeStats/CensusGeoTable.rds")
 
+```
+## pull out still unmatched addresses and categorize why matches failed
 
+Only do this once - code to eliminate this step has been added 
+for future use above.
+
+```{r further mismatches}
+newunmatched <- newlymatched %>%
+  select(oldaddress) %>%
+  rename(Address=oldaddress) %>%
+  setdiff(unmatched, .)
+
+for (i in 3:3) {
+  print(paste("--->",i,newunmatched[i,]))
+  latlong <- getlatlong(newunmatched[i,])
+  if (latlong$status=="success") {
+    print(paste("--final--",latlong[1,]))
+  } 
+}
+
+
+####   repairs to be propagated upstream
+
+newunmatched$Address <- str_replace(newunmatched$Address, "FWY FWY", "FWY")
 
 ```
+
 
