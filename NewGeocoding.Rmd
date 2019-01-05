@@ -108,7 +108,12 @@ Census_decoder <- function(address, city=NA, state=NA, zip=NA){
     ))
   }
     
-    # pick last result if multiples offered
+    # pick matching result if multiples offered
+  for (i in 1:Num_matches) {
+    temp <- result[["result"]][["addressMatches"]][[i]]
+    if (address == 
+        str_split(temp[["matchedAddress"]], ",")[1]) { break }
+  }
     temp <- result[["result"]][["addressMatches"]][[Num_matches]]
     tract <- temp[["geographies"]][["2010 Census Blocks"]][[1]][["TRACT"]]
     if (is.null(tract)){
@@ -201,8 +206,22 @@ getlatlong <- function(addr){
   adr2 <- unlist(strsplit(str_extract(x[1], "^[0-9]+-[0-9]+"),"-"))[2]
   street <- trimws(sub("^[0-9]+-[0-9]+", "", x[1]))
   
+  # walk away from end of block if necessary to get a hit
+  
   loc1 <- Census_decoder(paste(adr1, street), city, state)
+  j=0
+  while (loc1[1] != "success" && j<=4) {
+    adr1 <- as.character(as.numeric((adr1))+5)
+    loc1 <- Census_decoder(paste(adr1, street), city, state)
+    j=j+1
+  }
   loc2 <- Census_decoder(paste(adr2, street), city, state)
+  j=0
+  while (loc2[1] != "success" && j<=4) {
+    adr2 <- as.character(as.numeric((adr2))-5)
+    loc2 <- Census_decoder(paste(adr2, street), city, state)
+    j=j+1
+  }
   
   # If both succeed, then return average location. If either fails,
   # return failure. Also check directional prefix
@@ -293,7 +312,7 @@ newlymatched <- data.frame(
   distance=double(),
   stringsAsFactors = FALSE
 )
-newunmatched <- data.frame(
+newerunmatched <- data.frame(
   old_address=character(),
   match_address=character(),
   lat=double(),
@@ -304,25 +323,27 @@ newunmatched <- data.frame(
   stringsAsFactors = FALSE
 )
 
-for (i in 1:nrow(unmatched)) {
-#for (i in 2731:2734) {
-  print(paste("--->",i,unmatched[i,]))
-  latlong <- getlatlong(unmatched[i,])
+for (i in 4:nrow(newunmatched)) {
+#for (i in 3:3) {
+  print(paste("--->",i,newunmatched[i,1]))
+  if (grepl("UNK ", newunmatched[i,1])){next}
+  oldaddress <- newunmatched[i,1]
+  latlong <- getlatlong(oldaddress)
   if (latlong$status=="success") {
-    #print(paste("--final--",latlong[1,]))
-    latlong <- cbind(unmatched[i,], latlong)
+    print(paste("=======final=======",latlong[1,]))
+    latlong <- cbind(oldaddress, latlong)
     names(latlong)[names(latlong)=="lat.1"] <- "distance"
     newlymatched <- rbind(newlymatched, latlong)
     newlymatched[,1] <- as.character(newlymatched[,1])
   } else {
-    latlong <- cbind(unmatched[i,], latlong)
+    latlong <- cbind(oldaddress, latlong)
     names(latlong)[names(latlong)=="lat.1"] <- "distance"
-    newunmatched <- rbind(newunmatched, latlong)
-    newunmatched[,1] <- as.character(newunmatched[,1])
+    newerunmatched <- rbind(newerunmatched, latlong)
+    newerunmatched[,1] <- as.character(newerunmatched[,1])
   }
 }
-newlymatched[,1] <- as.character(newlymatched[,1])
-names(newlymatched)[names(newlymatched)=="unmatched[i, ]"] <- "oldaddress"
+#newlymatched[,1] <- as.character(newlymatched[,1])
+#names(newlymatched)[names(newlymatched)=="unmatched[i, ]"] <- "oldaddress"
 
 saveRDS(newlymatched, "~/Dropbox/CrimeStats/CensusGeoTable.rds")
 
@@ -350,6 +371,8 @@ for (i in 3:3) {
 ####   repairs to be propagated upstream
 
 newunmatched$Address <- str_replace(newunmatched$Address, "FWY FWY", "FWY")
+newunmatched$oldaddress <- str_replace(newunmatched$oldaddress, "GREENWICH PL ", "GREENWICH PLACE ")
+newunmatched$oldaddress <- str_replace(newunmatched$oldaddress, "GREENWICH PLACE ", "GREENWICH PLACE DR ")
 
 ```
 
