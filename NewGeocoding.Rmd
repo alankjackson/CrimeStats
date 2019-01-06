@@ -208,18 +208,18 @@ getlatlong <- function(addr){
   
   # walk away from end of block if necessary to get a hit
   
-  loc1 <- Census_decoder(paste(adr1, street), city, state)
+  loc1 <- Census_decoder(paste(adr1, street), city, state, "77000")
   j=0
   while (loc1[1] != "success" && j<=4) {
     adr1 <- as.character(as.numeric((adr1))+5)
-    loc1 <- Census_decoder(paste(adr1, street), city, state)
+    loc1 <- Census_decoder(paste(adr1, street), city, state, "77000")
     j=j+1
   }
-  loc2 <- Census_decoder(paste(adr2, street), city, state)
+  loc2 <- Census_decoder(paste(adr2, street), city, state, "77000")
   j=0
   while (loc2[1] != "success" && j<=4) {
     adr2 <- as.character(as.numeric((adr2))-5)
-    loc2 <- Census_decoder(paste(adr2, street), city, state)
+    loc2 <- Census_decoder(paste(adr2, street), city, state, "77000")
     j=j+1
   }
   
@@ -247,6 +247,15 @@ getlatlong <- function(addr){
   x <- unlist(strsplit(loc2$match_address, ","))
   newstreet2 <- trimws(sub("^[0-9]+", "", x[1]))
   #print(newstreet)
+  ##if (street != newstreet1 && street != newstreet2) {
+    # try adding a bogus zipcode to force it to look at alternatives
+   ## loc1 <- Census_decoder(paste(adr1, street), city, zip="77000")
+    ##loc2 <- Census_decoder(paste(adr2, street), city, zip="77000")
+   ## x <- unlist(strsplit(loc1$match_address, ","))
+    ##newstreet1 <- trimws(sub("^[0-9]+", "", x[1]))
+    ##x <- unlist(strsplit(loc2$match_address, ","))
+    ##newstreet2 <- trimws(sub("^[0-9]+", "", x[1]))
+ ## }
   if (street != newstreet1 && street != newstreet2) {
     print(paste("failure 2", street, newstreet1, newstreet2, 
                 sep=" : "))
@@ -271,6 +280,20 @@ getlatlong <- function(addr){
       zip <- last(unlist(str_split(loc2$match_address," ")))
       loc1 <- Census_decoder(paste(adr1, street), city, zip=zip)
     }
+  }
+  if (is.na(loc1$match_address) || is.na(loc2$match_address)) {
+    print(paste("failure 3", street, newstreet1, newstreet2, 
+                sep=" : "))
+    return(data.frame(
+      status="failmatch2",
+      match_address=loc1$match_address,
+      lat=NA,
+      long=NA,
+      tract=NA,
+      block=NA,
+      distance=NA,
+      stringsAsFactors = FALSE
+    ))
   }
   
   #   Look at distance between results
@@ -323,8 +346,8 @@ newerunmatched <- data.frame(
   stringsAsFactors = FALSE
 )
 
-for (i in 4:nrow(newunmatched)) {
-#for (i in 3:3) {
+#for (i in 3523:nrow(newunmatched)) {
+for (i in 2:2) {
   print(paste("--->",i,newunmatched[i,1]))
   if (grepl("UNK ", newunmatched[i,1])){next}
   oldaddress <- newunmatched[i,1]
@@ -346,6 +369,7 @@ for (i in 4:nrow(newunmatched)) {
 #names(newlymatched)[names(newlymatched)=="unmatched[i, ]"] <- "oldaddress"
 
 saveRDS(newlymatched, "~/Dropbox/CrimeStats/CensusGeoTable.rds")
+saveRDS(newerunmatched, "~/Dropbox/CrimeStats/UnCodedData.rds")
 
 ```
 ## pull out still unmatched addresses and categorize why matches failed
@@ -376,4 +400,5 @@ newunmatched$oldaddress <- str_replace(newunmatched$oldaddress, "GREENWICH PLACE
 
 ```
 
+Greenbriar Dr -> Greenbriar St
 
