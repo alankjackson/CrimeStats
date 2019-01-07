@@ -1,0 +1,25 @@
+---
+title: "ReadBeatVsZip"
+author: "Alan Jackson"
+date: "January 6, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Read file
+
+File formatted as
+
+Beat, zip, zip, zip, ...
+
+Number of zips is variable, so store as a list
+
+```{r read csv file}
+summary(cars)
+```
+
