@@ -7,6 +7,9 @@ output: html_document
 
 ```{r setup, include=FALSE}
 library(tidyverse)
+library(stringr)
+
+options(stringsAsFactors = FALSE)
 
 knitr::opts_chunk$set(echo = TRUE)
 ```
@@ -25,8 +28,7 @@ infile <- "~/Rprojects/CrimeStats/BeatZipcodes.csv"
 
 BeatToZip <- data_frame(
   beat=character(),
-  zips=list(),
-  stringsAsFactors = FALSE
+  zips=list()
 )
 
 con=file(infile,open="r")
@@ -36,8 +38,8 @@ for (i in 1:long){
   print(line[i])
   line[i] <- trimws(line[i])
   beat <- str_split(line[i],", *")[[1]][1]
-  zips <- list(str_split(line[i],", *")[[1]][-1])
-  temp <- cbind(beat, zips)
+  zips <- as.list(str_split(line[i],", *")[[1]][-1])
+  temp <- data_frame(beat, as.list(zips))
   BeatToZip <- rbind(BeatToZip, temp)
 }
 close(con)
