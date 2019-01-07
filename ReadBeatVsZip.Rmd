@@ -38,8 +38,8 @@ for (i in 1:long){
   print(line[i])
   line[i] <- trimws(line[i])
   beat <- str_split(line[i],", *")[[1]][1]
-  zips <- as.list(str_split(line[i],", *")[[1]][-1])
-  temp <- data_frame(beat, as.list(zips))
+  zips <- list(str_split(line[i],", *")[[1]][-1])
+  temp <- data_frame(beat, zips)
   BeatToZip <- rbind(BeatToZip, temp)
 }
 close(con)
