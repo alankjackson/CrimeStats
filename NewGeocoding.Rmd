@@ -346,7 +346,7 @@ newerunmatched <- data.frame(
   stringsAsFactors = FALSE
 )
 
-#for (i in 3523:nrow(newunmatched)) {
+#for (i in 4:nrow(newunmatched)) {
 for (i in 2:2) {
   print(paste("--->",i,newunmatched[i,1]))
   if (grepl("UNK ", newunmatched[i,1])){next}
@@ -395,6 +395,8 @@ for (i in 3:3) {
 ####   repairs to be propagated upstream
 
 newunmatched$Address <- str_replace(newunmatched$Address, "FWY FWY", "FWY")
+newunmatched$oldaddress <- str_replace(newunmatched$oldaddress, "FWY SER", "FWY")
+newunmatched$oldaddress <- str_replace(newunmatched$oldaddress, "GREENBRIAR DR", "GREENBRIAR ST")
 newunmatched$oldaddress <- str_replace(newunmatched$oldaddress, "GREENWICH PL ", "GREENWICH PLACE ")
 newunmatched$oldaddress <- str_replace(newunmatched$oldaddress, "GREENWICH PLACE ", "GREENWICH PLACE DR ")
 
