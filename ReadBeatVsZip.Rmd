@@ -35,12 +35,16 @@ long=length(line)
 for (i in 1:long){
   print(line[i])
   line[i] <- trimws(line[i])
-  beat <- str_split(line[1],", *")[[1]][1]
-  zips <- list(str_split(line[1],", *")[[1]][-1])
+  beat <- str_split(line[i],", *")[[1]][1]
+  zips <- list(str_split(line[i],", *")[[1]][-1])
   temp <- cbind(beat, zips)
   BeatToZip <- rbind(BeatToZip, temp)
 }
 close(con)
+
+#   Save it for future use
+
+saveRDS(BeatToZip, "~/Rprojects/CrimeStats/BeatToZip.rds")
 
 ```
 
