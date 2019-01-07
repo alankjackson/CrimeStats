@@ -20,6 +20,27 @@ Beat, zip, zip, zip, ...
 Number of zips is variable, so store as a list
 
 ```{r read csv file}
-summary(cars)
+
+infile <- "~/Rprojects/CrimeStats/BeatZipcodes.csv"
+
+BeatToZip <- data_frame(
+  beat=character(),
+  zips=list(),
+  stringsAsFactors = FALSE
+)
+
+con=file(infile,open="r")
+line=readLines(con) 
+long=length(line)
+for (i in 1:long){
+  print(line[i])
+  line[i] <- trimws(line[i])
+  beat <- str_split(line[1],", *")[[1]][1]
+  zips <- list(str_split(line[1],", *")[[1]][-1])
+  temp <- cbind(beat, zips)
+  BeatToZip <- rbind(BeatToZip, temp)
+}
+close(con)
+
 ```
 
