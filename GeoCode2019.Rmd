@@ -231,13 +231,15 @@ getlatlong <- function(addr, beat){
         x <- unlist(strsplit(loc$match_address, ","))
         newstreet <- trimws(sub("^[0-9]+", "", x[1]))
         if (street == newstreet) {
-          keepzip <- zip
+          #   sometimes it returns a new zip. Accept the new one.
+          keepzip <- x[4]
+          
           break # success - break out of loop
         }
     }
   }
   
-  # if we couldn't get this test to suceed, then give up.
+  # if we couldn't get this test to succeed, then give up.
   
   if (is.na(keepzip)) {
     print("zip failure")
@@ -376,8 +378,10 @@ newerunmatched <- data.frame(
   distance=double()
 )
 
-#for (i in 4:nrow(newunmatched)) {
-for (i in 5:5) {
+begin <- 17
+#for (i in 10:nrow(lastunmatched)) {
+#for (i in begin:(begin+5)) {
+for (i in 14:14) {
   print(paste("--->",i,lastunmatched[i,1]))
   if (grepl("UNK ", lastunmatched[i,1])){next}
   oldaddress <- lastunmatched[i,1]
@@ -427,10 +431,19 @@ for (i in 3:3) {
 
 lastunmatched$Address <- str_replace(lastunmatched$Address, "FWY FWY", "FWY")
 lastunmatched$Address <- str_replace(lastunmatched$Address, "FWY SER", "FWY")
+lastunmatched$Address <- str_replace(lastunmatched$Address, " SER ", " FWY ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, " CIR$", " CIRCLE")
 lastunmatched$Address <- str_replace(lastunmatched$Address, "GREENBRIAR DR", "GREENBRIAR ST")
+lastunmatched$Address <- str_replace(lastunmatched$Address, "WESTGATE DR", "WESTGATE ST")
 lastunmatched$Address <- str_replace(lastunmatched$Address, "GREENWICH PL ", "GREENWICH PLACE DR ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, "W POLK ", "POLK ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, "E W LOOP FWY", "W LOOP FWY")
+lastunmatched$Address <- str_replace(lastunmatched$Address, "W E LOOP FWY", "E LOOP FWY")
+lastunmatched$Address <- str_replace(lastunmatched$Address, "N S LOOP FWY", "S LOOP FWY")
+lastunmatched$Address <- str_replace(lastunmatched$Address, "S N LOOP FWY", "N LOOP FWY")
 
 ```
 
 Greenbriar Dr -> Greenbriar St
+W DALLAS ST   -> W DALLAS AVE
 
