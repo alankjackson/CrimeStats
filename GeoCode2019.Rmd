@@ -112,10 +112,10 @@ Census_decoder <- function(address, city=NA, state=NA, zip=NA){
     # pick matching result if multiples offered
   for (i in 1:Num_matches) {
     temp <- result[["result"]][["addressMatches"]][[i]]
-    if (address == 
-        str_split(temp[["matchedAddress"]], ",")[1]) { break }
+    if (grepl(address, 
+        str_split(temp[["matchedAddress"]], ",")[1])) { break }
   }
-    temp <- result[["result"]][["addressMatches"]][[Num_matches]]
+    #temp <- result[["result"]][["addressMatches"]][[Num_matches]]
     tract <- temp[["geographies"]][[
                    "2010 Census Blocks"]][[1]][["TRACT"]]
     if (is.null(tract)){
@@ -217,7 +217,7 @@ getlatlong <- function(addr, beat){
   # First try to find zipcode with block center address
   ##########
   
-  adr <- str_replace(adr2, "99 ", "50 ")
+  adr <- str_replace(adr2, "99$", "50")
   
   # Pull list of potential zipcodes
   
@@ -230,7 +230,7 @@ getlatlong <- function(addr, beat){
         # does the street match?
         x <- unlist(strsplit(loc$match_address, ","))
         newstreet <- trimws(sub("^[0-9]+", "", x[1]))
-        if (street == newstreet) {
+        if (grepl(street, newstreet)) {
           #   sometimes it returns a new zip. Accept the new one.
           keepzip <- x[4]
           
@@ -242,7 +242,9 @@ getlatlong <- function(addr, beat){
   # if we couldn't get this test to succeed, then give up.
   
   if (is.na(keepzip)) {
+    print("===========")
     print("zip failure")
+    print("===========")
     return(data.frame(
       status="fail on zip",
       match_address=NA,
@@ -299,7 +301,7 @@ getlatlong <- function(addr, beat){
   x <- unlist(strsplit(loc2$match_address, ","))
   newstreet2 <- trimws(sub("^[0-9]+", "", x[1]))
 
-  if (street != newstreet1 || street != newstreet2) {
+  if (!grepl(street, newstreet1) || !grepl(street, newstreet2)) {
     print(paste("failure 2", street, newstreet1, newstreet2, 
                 sep=" : "))
     return(data.frame(
@@ -375,13 +377,14 @@ newerunmatched <- data.frame(
   long=double(),
   tract=character(),
   block=character(),
+  beat=character(),
   distance=double()
 )
 
-begin <- 17
-#for (i in 10:nrow(lastunmatched)) {
-#for (i in begin:(begin+5)) {
-for (i in 14:14) {
+begin <- 55
+for (i in 1:nrow(lastunmatched)) {
+#for (i in begin:(begin+4)) {
+#for (i in 37:38) {
   print(paste("--->",i,lastunmatched[i,1]))
   if (grepl("UNK ", lastunmatched[i,1])){next}
   oldaddress <- lastunmatched[i,1]
@@ -396,6 +399,7 @@ for (i in 14:14) {
   } else {
     latlong <- cbind(oldaddress, latlong)
     names(latlong)[names(latlong)=="lat.1"] <- "distance"
+    latlong <- cbind(latlong, beat)
     newerunmatched <- rbind(newerunmatched, latlong)
     newerunmatched[,1] <- as.character(newerunmatched[,1])
   }
@@ -405,6 +409,10 @@ for (i in 14:14) {
 
 saveRDS(newlymatched, "~/Dropbox/CrimeStats/CensusGeoTable.rds")
 saveRDS(newerunmatched, "~/Dropbox/CrimeStats/UnCodedData.rds")
+
+lastunmatched <- newerunmatched %>%
+  select(oldaddress, beat) %>%
+  rename(Address=oldaddress)
 
 ```
 ## pull out still unmatched addresses and categorize why matches failed
@@ -432,7 +440,7 @@ for (i in 3:3) {
 lastunmatched$Address <- str_replace(lastunmatched$Address, "FWY FWY", "FWY")
 lastunmatched$Address <- str_replace(lastunmatched$Address, "FWY SER", "FWY")
 lastunmatched$Address <- str_replace(lastunmatched$Address, " SER ", " FWY ")
-lastunmatched$Address <- str_replace(lastunmatched$Address, " CIR$", " CIRCLE")
+lastunmatched$Address <- str_replace(lastunmatched$Address, " CIRCLE", " CIR")
 lastunmatched$Address <- str_replace(lastunmatched$Address, "GREENBRIAR DR", "GREENBRIAR ST")
 lastunmatched$Address <- str_replace(lastunmatched$Address, "WESTGATE DR", "WESTGATE ST")
 lastunmatched$Address <- str_replace(lastunmatched$Address, "GREENWICH PL ", "GREENWICH PLACE DR ")
@@ -441,9 +449,32 @@ lastunmatched$Address <- str_replace(lastunmatched$Address, "E W LOOP FWY", "W L
 lastunmatched$Address <- str_replace(lastunmatched$Address, "W E LOOP FWY", "E LOOP FWY")
 lastunmatched$Address <- str_replace(lastunmatched$Address, "N S LOOP FWY", "S LOOP FWY")
 lastunmatched$Address <- str_replace(lastunmatched$Address, "S N LOOP FWY", "N LOOP FWY")
+lastunmatched$Address <- str_replace(lastunmatched$Address, "[NSEW] SOUTHWEST FWY", "SOUTHWEST FWY")
+lastunmatched$Address <- str_replace(lastunmatched$Address, "MID LN", "MID LANE")
+lastunmatched$Address <- str_replace(lastunmatched$Address, "MCDUFFIE", "MC DUFFIE")
+lastunmatched$Address <- str_replace(lastunmatched$Address, "MC DUFFIE", "MCDUFFIE")
+lastunmatched$Address <- str_replace(lastunmatched$Address, "NEWMAN DR", "NEWMAN ST")
+lastunmatched$Address <- str_replace(lastunmatched$Address, "LP CENTRAL", "LP CENTRAL DR")
+lastunmatched$Address <- str_replace(lastunmatched$Address, "WESTPARK ,", "WESTPARK DR,")
+lastunmatched$Address <- str_replace(lastunmatched$Address, "W ALABAMA CT", "ALABAMA CT")
+lastunmatched$Address <- str_replace(lastunmatched$Address, "LAS PALMAS DR", "LAS PALMAS ST")
+lastunmatched$Address <- str_replace(lastunmatched$Address, "N CRAWFORD ST", "CRAWFORD ST")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      "W DALLAS ST", "W DALLAS AVE")
+#   STreet or AVEnue. Sigh.
+#lastunmatched$Address <- str_replace(lastunmatched$Address, 
+#                      "W DALLAS\\|AT\\|VE\\?", "W DALLAS")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      "MID LANE", "MID LANE DR")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " W LN", " WEST LANE")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " WEST LANE", " W LANE DR")
 
 ```
 
-Greenbriar Dr -> Greenbriar St
+---- census errors (they want the wrong name)
+
 W DALLAS ST   -> W DALLAS AVE
+MID LN        -> MID LANE DR
 
