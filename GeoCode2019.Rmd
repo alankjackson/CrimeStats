@@ -247,7 +247,7 @@ getlatlong <- function(addr, beat){
     print("===========")
     return(data.frame(
       status="fail on zip",
-      match_address=NA,
+      match_address=loc$match_address,
       lat=NA,
       long=NA,
       tract=NA,
@@ -407,7 +407,7 @@ for (i in 1:nrow(lastunmatched)) {
 #newlymatched[,1] <- as.character(newlymatched[,1])
 #names(newlymatched)[names(newlymatched)=="unmatched[i, ]"] <- "oldaddress"
 
-saveRDS(newlymatched, "~/Dropbox/CrimeStats/CensusGeoTable.rds")
+saveRDS(newlymatched, "~/Dropbox/CrimeStats/CensusGeoTable2.rds")
 saveRDS(newerunmatched, "~/Dropbox/CrimeStats/UnCodedData.rds")
 
 lastunmatched <- newerunmatched %>%
@@ -437,8 +437,8 @@ for (i in 3:3) {
 
 ####   repairs to be propagated upstream
 
-lastunmatched$Address <- str_replace(lastunmatched$Address, "FWY FWY", "FWY")
 lastunmatched$Address <- str_replace(lastunmatched$Address, "FWY SER", "FWY")
+lastunmatched$Address <- str_replace(lastunmatched$Address, "FWY ST", "FWY")
 lastunmatched$Address <- str_replace(lastunmatched$Address, " SER ", " FWY ")
 lastunmatched$Address <- str_replace(lastunmatched$Address, " CIRCLE", " CIR")
 lastunmatched$Address <- str_replace(lastunmatched$Address, "GREENBRIAR DR", "GREENBRIAR ST")
@@ -446,10 +446,16 @@ lastunmatched$Address <- str_replace(lastunmatched$Address, "WESTGATE DR", "WEST
 lastunmatched$Address <- str_replace(lastunmatched$Address, "GREENWICH PL ", "GREENWICH PLACE DR ")
 lastunmatched$Address <- str_replace(lastunmatched$Address, "W POLK ", "POLK ")
 lastunmatched$Address <- str_replace(lastunmatched$Address, "E W LOOP FWY", "W LOOP FWY")
+lastunmatched$Address <- str_replace(lastunmatched$Address, "WEST LOOP FWY", "W LOOP FWY")
 lastunmatched$Address <- str_replace(lastunmatched$Address, "W E LOOP FWY", "E LOOP FWY")
 lastunmatched$Address <- str_replace(lastunmatched$Address, "N S LOOP FWY", "S LOOP FWY")
 lastunmatched$Address <- str_replace(lastunmatched$Address, "S N LOOP FWY", "N LOOP FWY")
+lastunmatched$Address <- str_replace(lastunmatched$Address, " LOOP [NSEW] ", "LOOP FWY")
+lastunmatched$Address <- str_replace(lastunmatched$Address, "FWY FWY", "FWY")
+lastunmatched$Address <- str_replace(lastunmatched$Address, "NORTH LOOP", "N LOOP FWY")
 lastunmatched$Address <- str_replace(lastunmatched$Address, "[NSEW] SOUTHWEST FWY", "SOUTHWEST FWY")
+lastunmatched$Address <- str_replace(lastunmatched$Address, "[NSEW] KATY FWY", "KATY FWY")
+lastunmatched$Address <- str_replace(lastunmatched$Address, "[NSEW] NORTH FWY", "NORTH FWY")
 lastunmatched$Address <- str_replace(lastunmatched$Address, "MID LN", "MID LANE")
 lastunmatched$Address <- str_replace(lastunmatched$Address, "MCDUFFIE", "MC DUFFIE")
 lastunmatched$Address <- str_replace(lastunmatched$Address, "MC DUFFIE", "MCDUFFIE")
@@ -470,6 +476,142 @@ lastunmatched$Address <- str_replace(lastunmatched$Address,
                       " W LN", " WEST LANE")
 lastunmatched$Address <- str_replace(lastunmatched$Address, 
                       " WEST LANE", " W LANE DR")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " SAULNIER CIR", " SAULNIER ST")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " D'AMICO ST", " DAMICO ST")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " BUEL ", " BUELL ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " [NSEW] EASTEX ", " EASTEX ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " ELYSIAN VIADUCT ", " ELYSIAN ST ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " N N ", " N ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " W W ", " W ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " S S ", " S ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " E E ", " E ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " GULF POINTE ", " GULF POINT ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " ALMEDA GENOA ", " ALMEDA-GENOA ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " FWY RD ", " FWY ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " TAUB LP ", " TAUB LOOP ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " ALLEN PARKWAY RD ", " ALLEN PKWY ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " MT VERNON ", " VERNON ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " SHEPHERD RD ", " SHEPHERD DR ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " DOOLITLE ", " DOOLITTLE ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " HAZARD RD ", " HAZARD ST ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " DRIPPING SPRING ", " DRIPPING SPRINGS ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " APPLE DALE DR ", " APPLE DALE ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " STANFORD RD ", " STANFORD ST ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " CAMELLIA LN ", " CAMILLIA LN ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " BROWN CROFT ", " BROWNCROFT ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " ST JAMES ", " SAINT JAMES ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " LUTHER KING BLVD ", " LUTHER KING JR BLVD ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " 6011C ", " ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " EDGEMOORE ", " EDGEMOOR ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " S BERAN DR ", " BERAN DR ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " TAUB LOOP FWY ", " TAUB LOOP ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " OAKRIDGE ", " OAK RIDGE ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " COTTAGE ST ", " COTTAGE ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " OLD KATY RD ", " KATY RD ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " MC EWEN ", " MCEWEN ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " CENTER PLAZA ", " CENTERPLAZA ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " WANITA PLACE ", " WANITA PL ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " RUTLAND PLACE ", " RUTLAND PL ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " ACRES LANDING ", " ACRES LNDG ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " WILLOW MOSS ", " WILLOWMOSS ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " CREEK TERRACE ", " CREEK TER ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " PENNER CREST ", " PENNERCREST ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " EAST MEMORIAL LOOP ", " E MEMORIAL LOOP ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " CATALINA PLACE ", " CATALINA PL ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " WALT WAY DR ", " WALTWAY DR ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " 23RD RD ", " 23RD ST ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " COURT ,", " CT ,")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " 28TH AVE ", " 28TH ST ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " BLOSSUM ", " BLOSSOM ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " TRAIL ", " TRL ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " WOODARD RD ", " WOODARD ST ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " SAM HOUSTON PKY ", " SAM HOUSTON PKWY ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " SAM HOUSTON PARKWAY ", " SAM HOUSTON PKWY ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " ENCLAVE PARKWAY ", " ENCLAVE PKWY ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " NSHEPHERD ", " N SHEPHERD ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " TULSA ROAD ", " TULSA RD ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " PENNER CREST ", " PENNERCREST ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " LAWRANCE ", " LAWRENCE ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " WOODSMOKE ", " WOOD SMOKE ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " AVENUE P ", " AVE P ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " AVENUE A ", " AVE A ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " AVENUE U ", " AVE U ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " IMPRIAL ", " IMPERIAL ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " GREENS PARKWAY ", " GREENS PKWY ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " COLONIAL PARKWAY ", " COLONIAL PKWY ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " SOUTHWEST PARKWAY ", " SOUTHWEST PKWY ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " RAMP ", " ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " ROAD ,", " RD ,")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " SILVERHOLLOW ", " SILVER HOLLOW ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " WALT WAY ", " WALTWAY ")
 
 ```
 
