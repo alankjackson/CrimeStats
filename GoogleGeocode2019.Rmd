@@ -1,0 +1,312 @@
+---
+title: "GoogleGeocode"
+author: "Alan Jackson"
+date: "January 12, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+library(ggmap)
+library(purrr)
+library(tidyverse)
+library(stringr)
+
+apikey <- "AIzaSyCh1BnxeyvbIqokI-T0UjvJorknlF4M6Eg"
+register_google(key = apikey)
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Geocode with Google
+
+Create a file with
+Original spot address, beat, status, match address, lat, long
+
+Input will be
+old block address, beat
+
+split address to block start and end to create two records,
+feed each to google and save result
+
+```{r functions}
+
+TestAddresses <- c(
+  "100  WEBSTER , Houston, TX",
+  "1100  RUSK , Houston, TX",
+  "700  HOMELESS , Houston, TX",
+  "1600 marshall, houston, tx",
+  "100 capitol, houston, tx",
+  "1000 ralph, houston, tx"
+  )
+  
+
+#   Function for pulling fields out of nested lists returned by geocode
+getfields <- function(x){
+              if(! is.na(x) && length(x$results)>0)  {data.frame(
+              Latitude=as.numeric(x$results[[1]]$geometry$location$lat),
+              Longitude=as.numeric(x$results[[1]]$geometry$location$lng),
+              types=x$results[[1]]$types[1],
+              StreetName=x$results[[1]]$formatted_address,
+              LocType=x$results[[1]]$geometry$location_type,
+              stringsAsFactors = FALSE)
+              } else if ("status" %in% names(x) && x$status=="ZERO_RESULTS"){
+                data.frame(types=x$status,Latitude=NA,Longitude=NA, StreetName=NA,LocType=NA,stringsAsFactors = FALSE)
+              } else{
+                data.frame(types=NA,Latitude=NA,Longitude=NA, StreetName=NA,LocType=NA,stringsAsFactors = FALSE)
+              }
+}
+
+#testgeocode <- function(x){
+#              if(length(x$results)==0){
+#                print(paste("--->", x$status))
+#              }
+#}
+testgeocode <- function(x){
+              if(length(x$error_message)>0)  {
+              print(x$error_message[[1]])
+              }
+}
+
+```
+
+
+## Read in and prep data
+
+```{r read and prep}
+
+temp <- readRDS("~/Dropbox/CrimeStats/UnCodedData.rds")
+
+temp$oldaddress <- str_replace(temp$oldaddress, "FWY SER", "FWY")
+temp$oldaddress <- str_replace(temp$oldaddress, "FWY ST", "FWY")
+temp$oldaddress <- str_replace(temp$oldaddress, " SER ", " FWY ")
+temp$oldaddress <- str_replace(temp$oldaddress, " CIRCLE", " CIR")
+temp$oldaddress <- str_replace(temp$oldaddress, "GREENBRIAR DR", "GREENBRIAR ST")
+temp$oldaddress <- str_replace(temp$oldaddress, "WESTGATE DR", "WESTGATE ST")
+temp$oldaddress <- str_replace(temp$oldaddress, "GREENWICH PL ", "GREENWICH PLACE DR ")
+temp$oldaddress <- str_replace(temp$oldaddress, "W POLK ", "POLK ")
+temp$oldaddress <- str_replace(temp$oldaddress, "E W LOOP FWY", "W LOOP FWY")
+temp$oldaddress <- str_replace(temp$oldaddress, "WEST LOOP FWY", "W LOOP FWY")
+temp$oldaddress <- str_replace(temp$oldaddress, "W E LOOP FWY", "E LOOP FWY")
+temp$oldaddress <- str_replace(temp$oldaddress, "N S LOOP FWY", "S LOOP FWY")
+temp$oldaddress <- str_replace(temp$oldaddress, "S N LOOP FWY", "N LOOP FWY")
+temp$oldaddress <- str_replace(temp$oldaddress, " LOOP [NSEW] ", "LOOP FWY")
+temp$oldaddress <- str_replace(temp$oldaddress, "FWY FWY", "FWY")
+temp$oldaddress <- str_replace(temp$oldaddress, "NORTH LOOP", "N LOOP FWY")
+temp$oldaddress <- str_replace(temp$oldaddress, "[NSEW] SOUTHWEST FWY", "SOUTHWEST FWY")
+temp$oldaddress <- str_replace(temp$oldaddress, "[NSEW] KATY FWY", "KATY FWY")
+temp$oldaddress <- str_replace(temp$oldaddress, "[NSEW] NORTH FWY", "NORTH FWY")
+temp$oldaddress <- str_replace(temp$oldaddress, "MID LN", "MID LANE")
+temp$oldaddress <- str_replace(temp$oldaddress, "MCDUFFIE", "MC DUFFIE")
+temp$oldaddress <- str_replace(temp$oldaddress, "MC DUFFIE", "MCDUFFIE")
+temp$oldaddress <- str_replace(temp$oldaddress, "NEWMAN DR", "NEWMAN ST")
+temp$oldaddress <- str_replace(temp$oldaddress, "LP CENTRAL", "LP CENTRAL DR")
+temp$oldaddress <- str_replace(temp$oldaddress, "WESTPARK ,", "WESTPARK DR,")
+temp$oldaddress <- str_replace(temp$oldaddress, "W ALABAMA CT", "ALABAMA CT")
+temp$oldaddress <- str_replace(temp$oldaddress, "LAS PALMAS DR", "LAS PALMAS ST")
+temp$oldaddress <- str_replace(temp$oldaddress, "N CRAWFORD ST", "CRAWFORD ST")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      "W DALLAS ST", "W DALLAS AVE")
+#   STreet or AVEnue. Sigh.
+#temp$oldaddress <- str_replace(temp$oldaddress, 
+#                      "W DALLAS\\|AT\\|VE\\?", "W DALLAS")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      "MID LANE", "MID LANE DR")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " W LN", " WEST LANE")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " WEST LANE", " W LANE DR")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " SAULNIER CIR", " SAULNIER ST")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " D'AMICO ST", " DAMICO ST")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " BUEL ", " BUELL ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " [NSEW] EASTEX ", " EASTEX ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " ELYSIAN VIADUCT ", " ELYSIAN ST ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " N N ", " N ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " W W ", " W ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " S S ", " S ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " E E ", " E ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " GULF POINTE ", " GULF POINT ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " ALMEDA GENOA ", " ALMEDA-GENOA ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " FWY RD ", " FWY ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " TAUB LP ", " TAUB LOOP ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " ALLEN PARKWAY RD ", " ALLEN PKWY ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " MT VERNON ", " VERNON ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " SHEPHERD RD ", " SHEPHERD DR ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " DOOLITLE ", " DOOLITTLE ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " HAZARD RD ", " HAZARD ST ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " DRIPPING SPRING ", " DRIPPING SPRINGS ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " APPLE DALE DR ", " APPLE DALE ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " STANFORD RD ", " STANFORD ST ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " CAMELLIA LN ", " CAMILLIA LN ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " BROWN CROFT ", " BROWNCROFT ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " ST JAMES ", " SAINT JAMES ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " LUTHER KING BLVD ", " LUTHER KING JR BLVD ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " 6011C ", " ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " EDGEMOORE ", " EDGEMOOR ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " S BERAN DR ", " BERAN DR ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " TAUB LOOP FWY ", " TAUB LOOP ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " OAKRIDGE ", " OAK RIDGE ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " COTTAGE ST ", " COTTAGE ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " OLD KATY RD ", " KATY RD ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " MC EWEN ", " MCEWEN ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " CENTER PLAZA ", " CENTERPLAZA ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " WANITA PLACE ", " WANITA PL ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " RUTLAND PLACE ", " RUTLAND PL ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " ACRES LANDING ", " ACRES LNDG ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " WILLOW MOSS ", " WILLOWMOSS ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " CREEK TERRACE ", " CREEK TER ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " PENNER CREST ", " PENNERCREST ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " EAST MEMORIAL LOOP ", " E MEMORIAL LOOP ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " CATALINA PLACE ", " CATALINA PL ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " WALT WAY DR ", " WALTWAY DR ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " 23RD RD ", " 23RD ST ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " COURT ,", " CT ,")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " 28TH AVE ", " 28TH ST ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " BLOSSUM ", " BLOSSOM ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " TRAIL ", " TRL ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " WOODARD RD ", " WOODARD ST ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " SAM HOUSTON PKY ", " SAM HOUSTON PKWY ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " SAM HOUSTON PARKWAY ", " SAM HOUSTON PKWY ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " ENCLAVE PARKWAY ", " ENCLAVE PKWY ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " NSHEPHERD ", " N SHEPHERD ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " TULSA ROAD ", " TULSA RD ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " PENNER CREST ", " PENNERCREST ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " LAWRANCE ", " LAWRENCE ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " WOODSMOKE ", " WOOD SMOKE ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " AVENUE P ", " AVE P ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " AVENUE A ", " AVE A ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " AVENUE U ", " AVE U ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " IMPRIAL ", " IMPERIAL ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " GREENS PARKWAY ", " GREENS PKWY ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " COLONIAL PARKWAY ", " COLONIAL PKWY ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " SOUTHWEST PARKWAY ", " SOUTHWEST PKWY ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " RAMP ", " ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " ROAD ,", " RD ,")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " SILVERHOLLOW ", " SILVER HOLLOW ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " WALT WAY ", " WALTWAY ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " WOOD RD ", " WOOD ST ")
+temp$oldaddress <- str_replace(temp$oldaddress, 
+                      " ALLEN PARKWAY ", " ALLEN PKWY ")
+
+
+
+temp <- temp %>%
+  select(oldaddress, beat) %>%
+  mutate(addr=paste(str_extract(oldaddress,"^\\d+"),
+                    str_extract(oldaddress,"\\d+ "),sep=","),
+         street=str_extract(oldaddress," .+$")) %>%
+  separate_rows(addr, sep=",") %>%
+  mutate(Address=paste(addr, street)) %>%
+  select(oldaddress, beat, Address)
+  
+```
+
+
+## Run data
+
+```{r run data}
+
+limit <- min(geocodeQueryCheck(), nrow(temp))
+# run geocode for each record up to the daily limit, and then average the lat/long
+
+zero = 0
+query = 0
+numb = 0
+for (i in 1:limit) {
+  AllLatLong <- geocode(temp$Address[i], output="all") # geocode addresses
+  numb <- numb + 1
+  print(paste("----> ",numb," ",limit-numb))
+  #latlongs <- map_df(AllLatLong, getfields) # extract desired fields
+  latlongs <- getfields(AllLatLong)
+
+  temp$lon1[i] = latlongs$Longitude
+  temp$lat1[i] = latlongs$Latitude
+  temp$type[i] = latlongs$types
+  temp$StreetName[i] = latlongs$StreetName
+  temp$LocType[i] = latlongs$LocType
+  
+  #testgeocode(AllLatLong)
+  if(length(AllLatLong$results)==0){
+      print(paste("--->", AllLatLong$status))
+      if (AllLatLong$status == "OVER_QUERY_LIMIT") {
+        query <- query + 1
+      }
+      if (AllLatLong$status == "ZERO_RESULTS") {
+        zero <- zero + 1
+      }
+  }
+  
+  Sys.sleep(2)
+}
+
+```
+
