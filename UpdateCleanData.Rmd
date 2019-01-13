@@ -1,0 +1,72 @@
+---
+title: "Update Clean Data"
+author: "Alan Jackson"
+date: "January 13, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+library(tidyverse)
+library(stringr)
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Update Clean Data
+
+Take xxxxCleanData.rds files and add to them
+  - OldAddress (Block + Suffix + Street + Type)
+  - NewAddress (apply regex's to OldAddress to match census)
+  - lat, long, MatchAddress
+  - source (google, census, none)
+  - status (good, out of area, gibberish, nonexistent)
+  - Block (census block)
+  - Tract (census tract)
+
+```{r define functions}
+
+#     Create dictionary data frame of pattern/replacement
+Makedict <- function(dictionary) {
+  dict <- cbind.data.frame(split(dictionary, rep(1:2, times=length(dictionary)/2)), stringsAsFactors=F)
+  names(dict) <- c("From", "To")
+  return(dict)
+}
+
+#   test the searches first to see what they will find
+testregex <- function(dframe, col, pat) { # input data frame and regex
+  for(i in 1:length(pat[,1])) {
+    print(paste("Pattern: ",pat[i,1]))
+    hits <- unique(dframe[[col]][grepl(pat[i,1],dframe[[col]])])
+    if (length(hits)>0){
+      print(paste("   Result: ", hits))
+    }
+    else {
+      print("No hits")
+    }
+  }
+}
+
+#   apply to input array
+applyregex <- function(dframe, col, pat) {
+  for(i in 1:length(pat[,1])) {
+  dframe[[col]] <- str_replace_all(dframe[[col]],pat[i,1],pat[i,2])
+  }
+  return(dframe)
+}
+
+#   Following is sample of how to apply
+
+#  dictionary <- c(
+#                  " *P*O* BOX\\s\\d* *","",
+#                  " *BOX\\s\\d* *","",
+#                  "P *O BX",""
+#  )
+#  dict <- Makedict(dictionary)
+#  #   test them first
+#  testregex(df2, "Street", dict)
+#  #   Apply
+#  df2 <- applyregex(df2, "Street", dict)
+
+```
+
