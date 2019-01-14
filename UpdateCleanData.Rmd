@@ -10,6 +10,10 @@ output: html_document
 library(tidyverse)
 library(stringr)
 
+options(stringsAsFactors = FALSE)
+
+Dictionary <- readRDS("~/Dropbox/CrimeStats/StreetDictionary.rds")
+
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
@@ -20,7 +24,7 @@ Take xxxxCleanData.rds files and add to them
   - NewAddress (apply regex's to OldAddress to match census)
   - lat, long, MatchAddress
   - source (google, census, none)
-  - status (good, out of area, gibberish, nonexistent)
+  - status (good, out of area, gibberish, nonexistent, incomplete)
   - Block (census block)
   - Tract (census tract)
 
@@ -69,4 +73,50 @@ applyregex <- function(dframe, col, pat) {
 #  df2 <- applyregex(df2, "Street", dict)
 
 ```
+
+##  Read in the files to be updated
+
+```{r Read in data}
+
+
+reclean <- c("District1aReCleanData.rds", 
+             "District2aReCleanData.rds")
+recleanpath <- "~/Dropbox/CrimeStats/"
+
+dflist <- vector(mode = "list", length = 2)
+for (i in 1:2) {
+    dflist[[i]] <- readRDS(paste0(recleanpath, reclean[i]))
+}
+
+df <- dplyr::bind_rows(dflist)
+
+  # first create addresses in df: 
+  # Block_Range + Suffix + Street + Type + ", Houston, TX"
+
+df$OldAddress <- paste(df$Block_Range, df$Suffix, df$Street, df$Type, ", Houston, TX")
+df$OldAddress <- str_replace_all(df$OldAddress, "- ", "")
+df$OldAddress <- str_replace_all(df$OldAddress, "  ", " ")
+
+df$NewAddress <- paste(df$Block_Range, df$Suffix, df$Street, df$Type, ", Houston, TX")
+df$NewAddress <- str_replace_all(df$NewAddress, "- ", "")
+df$NewAddress <- str_replace_all(df$NewAddress, "  ", " ")
+
+dict <- Makedict(Dictionary)
+#   test them first
+testregex(df, "NewAddress", dict)
+#   Apply
+df <- applyregex(df, "NewAddress", dict)
+```
+
+##  Set status where able
+
+```{r set status preliminary}
+
+#   If address contains an "UNK" then set status to "incomplete"
+
+
+
+```
+
+
 
