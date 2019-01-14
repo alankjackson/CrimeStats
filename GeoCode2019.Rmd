@@ -381,10 +381,10 @@ newerunmatched <- data.frame(
   distance=double()
 )
 
-begin <- 55
-for (i in 1:nrow(lastunmatched)) {
+begin <- 10
+for (i in 15:nrow(lastunmatched)) {
 #for (i in begin:(begin+4)) {
-#for (i in 37:38) {
+#for (i in 96:96) {
   print(paste("--->",i,lastunmatched[i,1]))
   if (grepl("UNK ", lastunmatched[i,1])){next}
   oldaddress <- lastunmatched[i,1]
@@ -437,39 +437,64 @@ for (i in 3:3) {
 
 ####   repairs to be propagated upstream
 
-lastunmatched$Address <- str_replace(lastunmatched$Address, "FWY SER", "FWY")
-lastunmatched$Address <- str_replace(lastunmatched$Address, "FWY ST", "FWY")
-lastunmatched$Address <- str_replace(lastunmatched$Address, " SER ", " FWY ")
-lastunmatched$Address <- str_replace(lastunmatched$Address, " CIRCLE", " CIR")
-lastunmatched$Address <- str_replace(lastunmatched$Address, "GREENBRIAR DR", "GREENBRIAR ST")
-lastunmatched$Address <- str_replace(lastunmatched$Address, "WESTGATE DR", "WESTGATE ST")
-lastunmatched$Address <- str_replace(lastunmatched$Address, "GREENWICH PL ", "GREENWICH PLACE DR ")
-lastunmatched$Address <- str_replace(lastunmatched$Address, "W POLK ", "POLK ")
-lastunmatched$Address <- str_replace(lastunmatched$Address, "E W LOOP FWY", "W LOOP FWY")
-lastunmatched$Address <- str_replace(lastunmatched$Address, "WEST LOOP FWY", "W LOOP FWY")
-lastunmatched$Address <- str_replace(lastunmatched$Address, "W E LOOP FWY", "E LOOP FWY")
-lastunmatched$Address <- str_replace(lastunmatched$Address, "N S LOOP FWY", "S LOOP FWY")
-lastunmatched$Address <- str_replace(lastunmatched$Address, "S N LOOP FWY", "N LOOP FWY")
-lastunmatched$Address <- str_replace(lastunmatched$Address, " LOOP [NSEW] ", "LOOP FWY")
-lastunmatched$Address <- str_replace(lastunmatched$Address, "FWY FWY", "FWY")
-lastunmatched$Address <- str_replace(lastunmatched$Address, "NORTH LOOP", "N LOOP FWY")
-lastunmatched$Address <- str_replace(lastunmatched$Address, "[NSEW] SOUTHWEST FWY", "SOUTHWEST FWY")
-lastunmatched$Address <- str_replace(lastunmatched$Address, "[NSEW] KATY FWY", "KATY FWY")
-lastunmatched$Address <- str_replace(lastunmatched$Address, "[NSEW] NORTH FWY", "NORTH FWY")
-lastunmatched$Address <- str_replace(lastunmatched$Address, "MID LN", "MID LANE")
-lastunmatched$Address <- str_replace(lastunmatched$Address, "MCDUFFIE", "MC DUFFIE")
-lastunmatched$Address <- str_replace(lastunmatched$Address, "MC DUFFIE", "MCDUFFIE")
-lastunmatched$Address <- str_replace(lastunmatched$Address, "NEWMAN DR", "NEWMAN ST")
-lastunmatched$Address <- str_replace(lastunmatched$Address, "LP CENTRAL", "LP CENTRAL DR")
-lastunmatched$Address <- str_replace(lastunmatched$Address, "WESTPARK ,", "WESTPARK DR,")
-lastunmatched$Address <- str_replace(lastunmatched$Address, "W ALABAMA CT", "ALABAMA CT")
-lastunmatched$Address <- str_replace(lastunmatched$Address, "LAS PALMAS DR", "LAS PALMAS ST")
-lastunmatched$Address <- str_replace(lastunmatched$Address, "N CRAWFORD ST", "CRAWFORD ST")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                                     "FWY SER", "FWY")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                                     "FWY ST", "FWY")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                                     " SER ", " FWY ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                                     " CIRCLE", " CIR")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                                     "GREENBRIAR DR", "GREENBRIAR ST")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                                     "WESTGATE DR", "WESTGATE ST")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                                     "GREENWICH PL ", "GREENWICH PLACE DR ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                                     "W POLK ", "POLK ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                                     "E W LOOP FWY", "W LOOP FWY")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                                     "WEST LOOP FWY", "W LOOP FWY")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                                     "W E LOOP FWY", "E LOOP FWY")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                                     "N S LOOP FWY", "S LOOP FWY")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                                     "S N LOOP FWY", "N LOOP FWY")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                                     " LOOP [NSEW] ", "LOOP FWY")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                                     "FWY FWY", "FWY")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                                     "NORTH LOOP", "N LOOP FWY")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                                     "[NSEW] SOUTHWEST FWY", "SOUTHWEST FWY")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                                     "[NSEW] KATY FWY", "KATY FWY")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                                     "[NSEW] NORTH FWY", "NORTH FWY")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                                     "MID LN", "MID LANE")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                                     "MCDUFFIE", "MC DUFFIE")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                                     "MC DUFFIE", "MCDUFFIE")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                                     "NEWMAN DR", "NEWMAN ST")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                                     "LP CENTRAL", "LP CENTRAL DR")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                                     "WESTPARK ,", "WESTPARK DR,")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                                     "W ALABAMA CT", "ALABAMA CT")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                                     "LAS PALMAS DR", "LAS PALMAS ST")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                                     "N CRAWFORD ST", "CRAWFORD ST")
 lastunmatched$Address <- str_replace(lastunmatched$Address, 
                       "W DALLAS ST", "W DALLAS AVE")
-#   STreet or AVEnue. Sigh.
-#lastunmatched$Address <- str_replace(lastunmatched$Address, 
-#                      "W DALLAS\\|AT\\|VE\\?", "W DALLAS")
 lastunmatched$Address <- str_replace(lastunmatched$Address, 
                       "MID LANE", "MID LANE DR")
 lastunmatched$Address <- str_replace(lastunmatched$Address, 
@@ -612,6 +637,10 @@ lastunmatched$Address <- str_replace(lastunmatched$Address,
                       " SILVERHOLLOW ", " SILVER HOLLOW ")
 lastunmatched$Address <- str_replace(lastunmatched$Address, 
                       " WALT WAY ", " WALTWAY ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " WOOD RD ", " WOOD ST ")
+lastunmatched$Address <- str_replace(lastunmatched$Address, 
+                      " ALLEN PARKWAY ", " ALLEN PKWY ")
 
 ```
 
@@ -619,4 +648,115 @@ lastunmatched$Address <- str_replace(lastunmatched$Address,
 
 W DALLAS ST   -> W DALLAS AVE
 MID LN        -> MID LANE DR
+```{r create dictionary}
+#dictionary <- c(
+#                " *P*O* BOX\\s\\d* *","",
+#                " *BOX\\s\\d* *","",
+#                "P *O BX",""
+#)
+dictionary <- c(
+       "FWY SER", "FWY",
+       "FWY ST", "FWY",
+       " SER ", " FWY ",
+       " CIRCLE", " CIR",
+       "GREENBRIAR DR", "GREENBRIAR ST",
+       "WESTGATE DR", "WESTGATE ST",
+       "GREENWICH PL ", "GREENWICH PLACE DR ",
+       "W POLK ", "POLK ",
+       "E W LOOP FWY", "W LOOP FWY",
+       "WEST LOOP FWY", "W LOOP FWY",
+       "W E LOOP FWY", "E LOOP FWY",
+       "N S LOOP FWY", "S LOOP FWY",
+       "S N LOOP FWY", "N LOOP FWY",
+       " LOOP [NSEW] ", "LOOP FWY",
+       "FWY FWY", "FWY",
+       "NORTH LOOP", "N LOOP FWY",
+       "[NSEW] SOUTHWEST FWY", "SOUTHWEST FWY",
+       "[NSEW] KATY FWY", "KATY FWY",
+       "[NSEW] NORTH FWY", "NORTH FWY",
+       "MID LN", "MID LANE",
+       "MCDUFFIE", "MC DUFFIE",
+       "MC DUFFIE", "MCDUFFIE",
+       "NEWMAN DR", "NEWMAN ST",
+       "LP CENTRAL", "LP CENTRAL DR",
+       "WESTPARK ,", "WESTPARK DR,",
+       "W ALABAMA CT", "ALABAMA CT",
+       "LAS PALMAS DR", "LAS PALMAS ST",
+       "N CRAWFORD ST", "CRAWFORD ST",
+      "W DALLAS ST", "W DALLAS AVE",
+      "MID LANE", "MID LANE DR",
+      " W LN", " WEST LANE",
+      " WEST LANE", " W LANE DR",
+      " SAULNIER CIR", " SAULNIER ST",
+      " D'AMICO ST", " DAMICO ST",
+      " BUEL ", " BUELL ",
+      " [NSEW] EASTEX ", " EASTEX ",
+      " ELYSIAN VIADUCT ", " ELYSIAN ST ",
+      " N N ", " N ",
+      " W W ", " W ",
+      " S S ", " S ",
+      " E E ", " E ",
+      " GULF POINTE ", " GULF POINT ",
+      " ALMEDA GENOA ", " ALMEDA-GENOA ",
+      " FWY RD ", " FWY ",
+      " TAUB LP ", " TAUB LOOP ",
+      " ALLEN PARKWAY RD ", " ALLEN PKWY ",
+      " MT VERNON ", " VERNON ",
+      " SHEPHERD RD ", " SHEPHERD DR ",
+      " DOOLITLE ", " DOOLITTLE ",
+      " HAZARD RD ", " HAZARD ST ",
+      " DRIPPING SPRING ", " DRIPPING SPRINGS ",
+      " APPLE DALE DR ", " APPLE DALE ",
+      " STANFORD RD ", " STANFORD ST ",
+      " CAMELLIA LN ", " CAMILLIA LN ",
+      " BROWN CROFT ", " BROWNCROFT ",
+      " ST JAMES ", " SAINT JAMES ",
+      " LUTHER KING BLVD ", " LUTHER KING JR BLVD ",
+      " 6011C ", " ",
+      " EDGEMOORE ", " EDGEMOOR ",
+      " S BERAN DR ", " BERAN DR ",
+      " TAUB LOOP FWY ", " TAUB LOOP ",
+      " OAKRIDGE ", " OAK RIDGE ",
+      " COTTAGE ST ", " COTTAGE ",
+      " OLD KATY RD ", " KATY RD ",
+      " MC EWEN ", " MCEWEN ",
+      " CENTER PLAZA ", " CENTERPLAZA ",
+      " WANITA PLACE ", " WANITA PL ",
+      " RUTLAND PLACE ", " RUTLAND PL ",
+      " ACRES LANDING ", " ACRES LNDG ",
+      " WILLOW MOSS ", " WILLOWMOSS ",
+      " CREEK TERRACE ", " CREEK TER ",
+      " PENNER CREST ", " PENNERCREST ",
+      " EAST MEMORIAL LOOP ", " E MEMORIAL LOOP ",
+      " CATALINA PLACE ", " CATALINA PL ",
+      " WALT WAY DR ", " WALTWAY DR ",
+      " 23RD RD ", " 23RD ST ",
+      " COURT ,", " CT ,",
+      " 28TH AVE ", " 28TH ST ",
+      " BLOSSUM ", " BLOSSOM ",
+      " TRAIL ", " TRL ",
+      " WOODARD RD ", " WOODARD ST ",
+      " SAM HOUSTON PKY ", " SAM HOUSTON PKWY ",
+      " SAM HOUSTON PARKWAY ", " SAM HOUSTON PKWY ",
+      " ENCLAVE PARKWAY ", " ENCLAVE PKWY ",
+      " NSHEPHERD ", " N SHEPHERD ",
+      " TULSA ROAD ", " TULSA RD ",
+      " PENNER CREST ", " PENNERCREST ",
+      " LAWRANCE ", " LAWRENCE ",
+      " WOODSMOKE ", " WOOD SMOKE ",
+      " AVENUE P ", " AVE P ",
+      " AVENUE A ", " AVE A ",
+      " AVENUE U ", " AVE U ",
+      " IMPRIAL ", " IMPERIAL ",
+      " GREENS PARKWAY ", " GREENS PKWY ",
+      " COLONIAL PARKWAY ", " COLONIAL PKWY ",
+      " SOUTHWEST PARKWAY ", " SOUTHWEST PKWY ",
+      " RAMP ", " ",
+      " ROAD ,", " RD ,",
+      " SILVERHOLLOW ", " SILVER HOLLOW ",
+      " WALT WAY ", " WALTWAY ",
+      " WOOD RD ", " WOOD ST ",
+      " ALLEN PARKWAY ", " ALLEN PKWY "
+)
+```
 
