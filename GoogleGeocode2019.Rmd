@@ -12,7 +12,7 @@ library(purrr)
 library(tidyverse)
 library(stringr)
 
-apikey <- "AIzaSyCh1BnxeyvbIqokI-T0UjvJorknlF4M6Eg"
+apikey <- readRDS("~/Dropbox/CrimeStats/apikey.rds")
 register_google(key = apikey)
 
 knitr::opts_chunk$set(echo = TRUE)
