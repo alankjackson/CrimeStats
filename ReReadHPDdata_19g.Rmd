@@ -546,7 +546,7 @@ df2$Type <- str_replace_all(df2$Type,"^CIR$","CIRCLE")
 #   copy Street to OldStreet to save it
 
 ##---new---##
-df$OldStreet <- df$Street
+df2$OldStreet <- df2$Street
 
 keepdf2 <- df2
 #  EASTEX FWY, GULF FWY, KATY FWY, NORTH FWY, NORTHWEST FWY,
