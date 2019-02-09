@@ -10,10 +10,14 @@ output: html_document
 library(tidyverse)
 library(stringr)
 library(dplyr)
+library(ggmap)
 
 options(stringsAsFactors = FALSE)
 
-HoustonBoundary <- c(-95.789963, 29.518566, -95.005814, 30.117875)
+apikey <- readRDS("~/Dropbox/CrimeStats/apikey.rds")
+register_google(key = apikey)
+
+HoustonBdy <- c(-95.789963, 29.518566, -95.005814, 30.117875)
 
 reclean <- c("District1aReCleanData.rds", 
              "District2aReCleanData.rds")
@@ -265,6 +269,85 @@ unmatched <-
 
 ```
 
+##   Street name cleanup functions
+
+```{r cleanup functions}
+
+# address of form [0-9]+ [NSEW] name suffix , city, state, zip, USA
+getstreet <- function(address) {
+  x <- unlist(strsplit(unlist(address), ","))
+  street <- trimws(sub("^[0-9]+", "", x[1]))
+  return(street)
+}
+
+# address of form [0-9]+-[0-9]+ [NSEW] name suffix , city, state, zip, USA
+getoldstreet <- function(address) {
+  x <- unlist(strsplit(unlist(address), ","))
+  street <- trimws(sub("^[0-9]+-[0-9]+", "", x[1]))
+  return(street)
+}
+
+# pull final string off street and test if is a valid suffix
+getsuffix <- function(street) {
+  suffixes <- c("FWY", "CIR", "ST", "RD", "DR", "AVE", "LN", "BLVD",
+               "PL", "CT", "PKWY", "TER", "LNDG", "WAY", "TRL",
+               "FREEWAY", "CIRCLE", "STREET", "ROAD", "DRIVE",
+               "AVENUE", "LANE", "BOULEVARD", "PLACE", "COURT", "PARKWAY",
+               "TERRACE", "LANDING", "WAY", "TRAIL")
+  suffix <- tail(unlist(strsplit(street,split=" ")),1)
+  if (any(suffix==suffixes)) {
+    return(suffix)
+  } else {return(" ")}
+}
+
+```
+
+##  create a file for checking suffixes
+
+```{r suffixes}
+
+# pull out good matched addresses
+
+addresses <- unmatched %>% filter(geocode_status=="census" |
+                                  geocode_status=="google") %>% 
+                   select(match_address) %>% 
+                   mutate(match_address=toupper(match_address)) %>% 
+                   unique() 
+#   strip out the street names
+streets <- addresses$match_address %>% map(getstreet) %>% unique()
+streets <- enframe(unlist(streets),value="street")
+
+#   separate street name from suffix
+street_stds <- streets %>% #  standard names and suffixes
+            rowwise() %>% 
+            mutate(suffix=getsuffix(street)) %>% 
+            mutate(street=str_remove(street, paste0(" ",suffix,"$"))) %>% 
+            select(-name)
+
+# Convert to a data.table
+  
+setDT(street_stds, key="street")
+
+#     Correct street name suffixes
+
+getnewstreet <- function(checkstreet){
+  ans <- street_stds[.(checkstreet), nomatch=NULL]
+  setDF(ans)
+  if(nrow(ans)==1) {return(paste(ans$street, ans$suffix))
+  }
+  else {return(checkstreet)}
+}
+
+unmatched <- 
+unmatched %>% 
+  rowwise() %>% 
+  mutate(street=getoldstreet(Address)) %>% 
+  rowwise() %>% 
+  mutate(newstreet=getnewstreet(street)) %>% 
+  select(-street)
+
+
+```
 ##  Census Geocoding
 
 Call census geocoder for first and last address, and on success
@@ -407,6 +490,7 @@ special <- tribble(
   "GREENWAY PLAZA DR", "03",
   "IRVINGTON BLVD",    "05",
   "CUMMINS ST",        "15",
+  "S HEIGHTS BLVD",    "15",
   "VERNON ST",         "15",
   "EAST",              "41",
   "CETTIPARK ST",      "10"
@@ -416,18 +500,24 @@ special <- tribble(
 
 skips <- c("MEMORIAL", "SAWYER", "S HEIGHTS", "FWY", "PICNIC", "HOMELESS", "PO BOX", "POBOX","WASHINGTON", "HAYS", "POST OAK")
 
+onlys <- c("S HEIGHTS", "EAST ST", "MID LANE", "WEST ST",
+           "BRAEBURNE", "HARVARD", "OXFORD", "PARK TRAIL",
+           "COTTAGE")
+
 ##########################################
 ##    second spin through data geocoding
 ##########################################
 
 
-begin <- 2200
+begin <- 1000
 for (i in begin:nrow(unmatched)) {
 #for (i in begin:(begin+999)) {
 #for (i in 572:572) {
   if (unmatched[i,]$status!="success"){ # only the redo's
     # skip hopeless cases
-    if (any(str_detect(unmatched[i,]$Address, skips))){next()}
+    #if (any(str_detect(unmatched[i,]$Address, skips))){next()}
+    # only do selected cases
+    if (!any(str_detect(unmatched[i,]$Address, onlys))){next()}
     print(paste("--->",i,unmatched[i,1]))
     # Did I already succeed at this match somewhere?
     a <- unmatched %>% filter(Address == unmatched[i,]$Address,
@@ -462,6 +552,258 @@ for (i in begin:nrow(unmatched)) {
 }
 
 saveRDS(unmatched, "~/Dropbox/CrimeStats/CensusGeoTable_progress.rds")
+
+```
+
+```{r look at misses}
+
+#   Look at the failures - first strip number and consolidate
+
+unmatched %>% 
+  filter(geocode_status=="census fail") %>% 
+  mutate(street=sub("^[0-9]+-[0-9]+", "", Address))  %>% 
+  mutate(street=trimws(str_extract(street, "[A-Z ]+")))  %>% 
+  group_by(street) %>% 
+  summarise(nn=sum(n)) %>% 
+  arrange(-nn)
+```
+
+###  Now we will turn to Google for the rest
+
+```{r GetLatLongGoogle}
+
+#   Function for pulling fields out of nested lists returned by geocode
+getfields <- function(x){
+              if(! is.na(x) && length(x$results)>0)  {tibble(
+              lat=as.numeric(x$results[[1]]$geometry$location$lat),
+              long=as.numeric(x$results[[1]]$geometry$location$lng),
+              match_address=x$results[[1]]$formatted_address,
+              LocType=x$results[[1]]$geometry$location_type,
+              Type=unlist(x$results[[1]]$types[1])
+              )
+              } else if ("status" %in% names(x) &&
+                         x$status=="ZERO_RESULTS"){
+                tibble(Type=x$status,lat=NA,long=NA,
+                           match_address=NA,LocType=NA )
+              } else{
+                tibble(Type=NA,lat=NA,long=NA,
+                           match_address=NA,LocType=NA )
+              }
+}
+
+#     Process google results and check for accuracy
+
+GetLatLongGoogle <- function(address, newaddr){
+  # prepare address
+  x <- unlist(strsplit(unlist(address), ","))
+  city <- trimws(x[2])
+  state <- trimws(x[3])
+  adr <- unlist(strsplit(str_extract(x[1], "^[0-9]+-[0-9]+"),"-"))[1]
+  adr <- str_replace(adr, "00$", newaddr)
+  adr <- str_replace(adr, "^0$", newaddr)
+  street <- trimws(sub("^[0-9]+-[0-9]+", "", x[1]))
+  address <- paste(adr, street, ",", city, ",", state)
+  
+  #   get results from given address
+  
+  GoogleResults <- geocode(address, output="all")
+  LatLong1 <- getfields(GoogleResults)
+  
+  #   Did we error?
+  
+  if (is.na(LatLong1$Type) |
+      LatLong1$Type == "ZERO_RESULTS"){
+          LatLong1$status <- "no result"
+          return(LatLong1)
+      }
+  
+  #   Are we within the city?
+  
+  if (!between(LatLong1$lat, HoustonBdy[2], HoustonBdy[4]) |
+      !between(LatLong1$long, HoustonBdy[1], HoustonBdy[3])){
+          LatLong1$status <- "outside boundary"
+          return(LatLong1)
+      }
+  
+  #   Is it a bogus location at center of long street?
+  
+  if (LatLong1$LocType == "GEOMETRIC_CENTER") { # bad location
+          LatLong1$status <- "Road only, street number ignored"
+          return(LatLong1)
+  }
+  
+  # REALLY bogus location - don't want this
+    
+  if (LatLong1$LocType == "APPROXIMATE" ) { # bad location
+          LatLong1$status <- "City only, street ignored"
+          return(LatLong1)
+  }
+  
+  #   Is the match name "close enough"?
+  x <- unlist(strsplit(unlist(LatLong1$match_address), ","))
+  utstreet <- trimws(sub("^[0-9]+", "", x[1]))
+  if (tolower(street) != tolower(utstreet)){
+          LatLong1$status <- "Names mismatch"
+          return(LatLong1)
+  }
+  
+  #   Now tweak the street number and get a new set
+  #   unless LocType == "ROOFTOP"
+  
+  if (LatLong1$LocType != "ROOFTOP") { # interpolated location
+      addrnumber <- str_extract(address, "^[0-9]+ ")
+      addrnumber2 <- as.character(as.numeric(addrnumber)+15)
+      address <- str_replace(address, addrnumber, addrnumber2)
+      GoogleResults <- geocode(address, output="all")
+      LatLong2 <- getfields(GoogleResults)
+        
+    #   Are the answers the same? If so, we have a problem
+      distance <- dist(rbind(c(LatLong1$lat, LatLong1$long),
+                        c(LatLong2$lat, LatLong2$long))) *
+                        69*5280
+      if (distance < 10){# could be almost anywhere, reject
+          LatLong1$status <- paste("Distance =",as.character(distance))
+          return(LatLong1)
+      }
+  }
+  #   All the tests passed, successful return
+        LatLong1$status <- "success"
+        return(LatLong1)
+  
+}
+
+```
+
+##    And here we run google
+
+```{r run google}
+
+# re-edit addresses
+
+#unmatched <- readRDS( "~/Dropbox/CrimeStats/CensusGeoTable_progress.rds")
+
+source("Edit_Addresses.R") # load in address edits
+
+dict <- Makedict(dictionary)
+#   test them first
+testregex(unmatched, "Address", dict)
+#   Apply
+unmatched <- applyregex(unmatched, "Address", dict)
+
+#    special cases - digits replace last 2 on address
+special <- tribble(
+  ~match, ~addr,
+  "GREENWAY PLAZA DR", "03",
+  "IRVINGTON BLVD",    "05",
+  "CUMMINS ST",        "15",
+  "N SAN JACINTO",     "15",
+  "S HEIGHTS BLVD",    "15",
+  "VERNON ST",         "15",
+  "VISTA WOODS DR",    "15",
+  "EAST",              "41",
+  "CETTIPARK ST",      "10"
+)
+
+# Skip these, won't get them, this will speed things up
+
+skips <- c("HOMELESS", "PO BOX", "POBOX", "ENTRANCE")
+
+##########################################
+##    next spin through data geocoding
+##########################################
+
+unmatched <- unmatched %>% mutate(GType=NA) # add new information column
+
+
+geocodeQueryCheck()
+begin <- 12000
+#for (i in begin:nrow(unmatched)) {
+for (i in begin:(begin+199)) {
+#for (i in 10175:10175) {
+  if (unmatched[i,]$status!="success"){ # only the redo's
+    # skip hopeless cases
+    if (any(str_detect(unmatched[i,]$Address, skips))){next()}
+    # skip distance <10 cases
+    if (unmatched[i,]$status=="Distance = 0"){next()}
+    # skip GEOMETRIC_CENTER cases
+    if(!is.na(unmatched[i,]$GType) &
+        unmatched[i,]$GType == "GEOMETRIC_CENTER route") {next()}
+    # only do selected cases
+    #if (!any(str_detect(unmatched[i,]$Address, onlys))){next()}
+    print(paste("--->",i,unmatched[i,1]))
+    # Did I already succeed at this match somewhere?
+    a <- unmatched %>% filter(Address == unmatched[i,]$Address,
+                              status=="success" )
+    if (nrow(a)>0){
+      unmatched[i,4:10] <- a[1,4:10]
+      print("found previous match")
+      next
+    }
+    newaddr <- "30"
+    if (grepl("FWY", unmatched[i,]$Address)){newaddr <- "15"}
+    if(any(str_detect(unmatched[i,]$Address, special$match))){
+      newaddr <- special[str_detect(unmatched[i,]$Address, special$match),]$addr
+    }
+    
+    #   Call google
+    
+    latlong <- GetLatLongGoogle( unmatched[i,]$Address, newaddr)
+    if (latlong$status=="success") {
+      #print(paste("=======final=======",latlong[1,]))
+      print(paste("=======success======="))
+      unmatched[i,]$match_address  <- latlong$match_address
+      unmatched[i,]$lat            <- latlong$lat
+      unmatched[i,]$long           <- latlong$long
+      unmatched[i,]$geocode_status <- "google"
+      unmatched[i,]$status         <- latlong$status
+      unmatched[i,]$GType          <- paste(latlong$LocType, latlong$Type)
+    } else if (latlong$status=="Names mismatch"){
+      print(paste("=======fail=======",latlong[1,]))
+      unmatched[i,]$geocode_status <- "google fail"
+      unmatched[i,]$status         <- latlong$status
+      unmatched[i,]$GType          <- paste(latlong$LocType, latlong$Type)
+      unmatched[i,]$match_address  <- latlong$match_address
+    } else{
+      print(paste("=======fail======="))
+      unmatched[i,]$geocode_status <- "google fail"
+      unmatched[i,]$status         <- latlong$status
+      unmatched[i,]$GType          <- paste(latlong$LocType, latlong$Type)
+      unmatched[i,]$match_address  <- latlong$match_address
+    }
+  }
+}
+
+saveRDS(unmatched, "~/Dropbox/CrimeStats/CensusGeoTable_progress.rds")
+
+#   Percent of unique addresses found, and percent of total found
+
+unmatched %>% 
+  group_by(geocode_status) %>% 
+  summarise(n=n())
+
+
+```
+
+```{r test google geocode}
+
+addrs <- c("1300-1399 TULANE ST, HOUSTON, TX",
+           "1700-1799 TULANE ST, HOUSTON, TX") 
+
+for (i in 1:2) {
+    print(paste("--->",i,addrs[i]))
+    newaddr <- "30"
+    if (grepl("FWY", addrs[i])){newaddr <- "15"}
+    
+    #   Call google
+    
+    latlong <- GetLatLongGoogle( addrs[i], newaddr)
+    if (latlong$status=="success") {
+      print(paste("=======final=======",latlong[1,]))
+    } else {
+      print(paste("=======fail=======",latlong[1,]))
+    }
+}
+
 
 ```
 
