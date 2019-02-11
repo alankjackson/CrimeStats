@@ -7,6 +7,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 
+library(data.table)
 library(tidyverse)
 library(stringr)
 library(dplyr)
@@ -18,6 +19,7 @@ apikey <- readRDS("~/Dropbox/CrimeStats/apikey.rds")
 register_google(key = apikey)
 
 HoustonBdy <- c(-95.789963, 29.518566, -95.005814, 30.117875)
+BoundBox <- "bounds=29.518566,-95.789963|30.117875,-95.005814"
 
 reclean <- c("District1aReCleanData.rds", 
              "District2aReCleanData.rds")
@@ -243,8 +245,9 @@ df <- df %>%
 
 unmatched <- df %>%
   filter(geocode_status=="pending") %>%
+  mutate(RawAddress=Address) %>% 
   add_count(Address, Beat) %>% 
-  select(Address, Beat, n, geocode_status) %>%  
+  select(RawAddress, Address, Beat, n, geocode_status) %>%  
   distinct() %>% 
   arrange(-n) # focus on most important first
 
@@ -338,14 +341,27 @@ getnewstreet <- function(checkstreet){
   else {return(checkstreet)}
 }
 
-unmatched <- 
-unmatched %>% 
+unmatched2 <- 
+  unmatched %>% 
   rowwise() %>% 
   mutate(street=getoldstreet(Address)) %>% 
   rowwise() %>% 
   mutate(newstreet=getnewstreet(street)) %>% 
   select(-street)
 
+#   Update Address field with repaired street names
+
+for (i in 1:nrow(unmatched2)) {
+  x <- unlist(strsplit(unlist(unmatched2[i,]$Address), ","))
+  city <- trimws(x[2])
+  state <- trimws(x[3])
+  adr <- str_extract(x[1], "^[0-9]+-[0-9]+")
+  address <- paste(adr, unmatched2[i,]$newstreet, ",", city, ",", state)
+  unmatched2[i,]$Address <- address
+}
+
+keep_unmatched <- unmatched
+unmatched <- unmatched2
 
 ```
 ##  Census Geocoding
@@ -606,7 +622,8 @@ GetLatLongGoogle <- function(address, newaddr){
   
   #   get results from given address
   
-  GoogleResults <- geocode(address, output="all")
+  #GoogleResults <- geocode(address, output="all")
+  GoogleResults <- geocode(address, output="all", inject=BoundBox)
   LatLong1 <- getfields(GoogleResults)
   
   #   Did we error?
@@ -674,6 +691,93 @@ GetLatLongGoogle <- function(address, newaddr){
 
 ```
 
+##    take care of some special cases
+
+```{r Some special cases}
+
+#  W Memorial Loop Dr 29.774177, -95.442344
+#  Memorial Loop Dr 29.775845, -95.431376
+#  N Picnic Ln 29.76546, -95.4448
+#  S Picnic Ln 29.763081, -95.437057
+#  7\\d{3} MEMORIAL DR 29.768436, -95.447572
+
+
+
+mask <- grepl("W MEMORIAL LOOP", unmatched$Address)
+
+unmatched[mask,]$match_address <- "2000 W Memorial Loop Dr, Houston, TX 77007, USA"
+unmatched[mask,]$status    <- "success"
+unmatched[mask,]$geocode_status    <- "google"
+unmatched[mask,]$lat    <- 29.774177
+unmatched[mask,]$long   <- -95.442344
+unmatched[mask,]$GType    <- "RANGE_INTERPOLATED manual"
+
+mask <- grepl("9 MEMORIAL LOOP", unmatched$Address)
+
+unmatched[mask,]$match_address <- "1000 Memorial Loop Dr, Houston, TX 77007, USA"
+unmatched[mask,]$status    <- "success"
+unmatched[mask,]$geocode_status    <- "google"
+unmatched[mask,]$lat    <- 29.775845
+unmatched[mask,]$long   <- -95.431376
+unmatched[mask,]$GType    <- "RANGE_INTERPOLATED manual"
+
+mask <- grepl("N PICNIC LN", unmatched$Address)
+
+unmatched[mask,]$match_address <- "6000 N Picnic Ln, Houston, TX 77007, USA"
+unmatched[mask,]$status    <- "success"
+unmatched[mask,]$geocode_status    <- "google"
+unmatched[mask,]$lat    <- 29.76546
+unmatched[mask,]$long   <- -95.4448
+unmatched[mask,]$GType    <- "RANGE_INTERPOLATED manual"
+
+mask <- grepl("S PICNIC LN", unmatched$Address)
+
+unmatched[mask,]$match_address <- "500 S Picnic Ln, Houston, TX 77007, USA"
+unmatched[mask,]$status    <- "success"
+unmatched[mask,]$geocode_status    <- "google"
+unmatched[mask,]$lat    <- 29.763081
+unmatched[mask,]$long   <- -95.442344
+unmatched[mask,]$GType    <- "RANGE_INTERPOLATED manual"
+
+mask <- grepl("7\\d{3} MEMORIAL DR", unmatched$Address)
+
+unmatched[mask,]$match_address <- "7500 Memorial Dr, Houston, TX 77007, USA"
+unmatched[mask,]$status    <- "success"
+unmatched[mask,]$geocode_status    <- "google"
+unmatched[mask,]$lat    <- 29.766523
+unmatched[mask,]$long   <- -95.442661
+unmatched[mask,]$GType    <- "RANGE_INTERPOLATED manual"
+
+mask <- grepl("199 E MEMORIAL LOOP DR", unmatched$Address)
+
+unmatched[mask,]$match_address <- "150 E Memorial Loop Dr, Houston, TX 77007, USA"
+unmatched[mask,]$status    <- "success"
+unmatched[mask,]$geocode_status    <- "google"
+unmatched[mask,]$lat    <- 29.764794
+unmatched[mask,]$long   <- -95.431154
+unmatched[mask,]$GType    <- "RANGE_INTERPOLATED manual"
+
+mask <- grepl("68\\d{2} MEMORIAL DR", unmatched$Address)
+
+unmatched[mask,]$match_address <- "6850 Memorial Dr, Houston, TX 77007, USA"
+unmatched[mask,]$status    <- "success"
+unmatched[mask,]$geocode_status    <- "google"
+unmatched[mask,]$lat    <- 29.765306
+unmatched[mask,]$long   <- -95.432661
+unmatched[mask,]$GType    <- "RANGE_INTERPOLATED manual"
+
+mask <- grepl("2499 KATY FWY", unmatched$Address)
+
+unmatched[mask,]$match_address <- "2450 Katy Fwy, Houston, TX 77007, USA"
+unmatched[mask,]$status    <- "success"
+unmatched[mask,]$geocode_status    <- "google"
+unmatched[mask,]$lat    <- 29.776653
+unmatched[mask,]$long   <- -95.386089
+unmatched[mask,]$GType    <- "RANGE_INTERPOLATED manual"
+
+
+```
+
 ##    And here we run google
 
 ```{r run google}
@@ -682,7 +786,8 @@ GetLatLongGoogle <- function(address, newaddr){
 
 #unmatched <- readRDS( "~/Dropbox/CrimeStats/CensusGeoTable_progress.rds")
 
-source("Edit_Addresses.R") # load in address edits
+#source("Edit_Addresses.R") # load in address edits
+source("SuffixEdits.R") # load in address edits
 
 dict <- Makedict(dictionary)
 #   test them first
@@ -696,17 +801,21 @@ special <- tribble(
   "GREENWAY PLAZA DR", "03",
   "IRVINGTON BLVD",    "05",
   "CUMMINS ST",        "15",
+  "SAWYER HEIGHTS",    "24",
   "N SAN JACINTO",     "15",
   "S HEIGHTS BLVD",    "15",
   "VERNON ST",         "15",
+  "DELWIN ST",         "15",
+  "MEMORIAL CT",       "15",
   "VISTA WOODS DR",    "15",
+  "W HEIGHTS HOLLOW LN","15",
   "EAST",              "41",
   "CETTIPARK ST",      "10"
 )
 
 # Skip these, won't get them, this will speed things up
 
-skips <- c("HOMELESS", "PO BOX", "POBOX", "ENTRANCE")
+skips <- c("HOMELESS", "PO BOX", "POBOX", "ENTRANCE", "P O BOX")
 
 ##########################################
 ##    next spin through data geocoding
@@ -716,11 +825,14 @@ unmatched <- unmatched %>% mutate(GType=NA) # add new information column
 
 
 geocodeQueryCheck()
-begin <- 12000
-#for (i in begin:nrow(unmatched)) {
-for (i in begin:(begin+199)) {
-#for (i in 10175:10175) {
+begin <- 1
+for (i in begin:nrow(unmatched)) {
+#for (i in begin:(begin+499)) {
+#for (i in 151:151) {
   if (unmatched[i,]$status!="success"){ # only the redo's
+    # skip cases with no street name
+    if (grepl("99 +,", unmatched[i,]$Address)){print("--no street--")
+      next()}
     # skip hopeless cases
     if (any(str_detect(unmatched[i,]$Address, skips))){next()}
     # skip distance <10 cases
@@ -803,6 +915,18 @@ for (i in 1:2) {
       print(paste("=======fail=======",latlong[1,]))
     }
 }
+
+
+```
+
+```{r fix mt vernon}
+
+mask <- grepl("MT VERNON", unmatched$RawAddress)
+
+unmatched[mask,]$newstreet <- "MT VERNON ST"
+unmatched[mask,]$status    <- "Names mismatch"
+unmatched[mask,]$Address  <- str_replace(unmatched[mask,]$Address, "9 V", "9 MT V")
+
 
 
 ```
