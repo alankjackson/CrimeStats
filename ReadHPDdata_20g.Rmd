@@ -202,6 +202,46 @@ for (beat in beats)
 
 ```
 
+#     April & May 2010 district files missing, so read individual beat files instead
+
+```{r read in April, May 2010 by beat}
+keepdf2 <- df2
+for (beat in beats)
+{ 
+  for (mon in c("apr","may"))
+    {
+    
+    url = paste("http://www.houstontx.gov/police/cs/stats2010/",mon,"10/",mon,"10",beat,".htm", sep="")
+    print(url)
+    
+
+    # read in html table and parse into a data frame
+    tempfile <- url %>% 
+      read_html() %>% 
+      html_nodes(xpath='/html/body/div/table') %>% 
+      html_table(header=TRUE)
+    tempfile <- tempfile[[1]]
+    
+    # Remove nonsense columns
+    tempfile <- select(tempfile,-starts_with("Field"))
+    
+    # Force consistent column names
+    names(tempfile) <- c("Date","Hour","Offense_Type","Beat","Premise","Block_Range","Street","Type","Suffix","Num_Off")
+    
+    # some hour fields are borked with character data
+    tempfile$Hour <- as.character(tempfile$Hour)
+    
+    # append to df2
+    df2 <- bind_rows(df2, tempfile)
+    
+    # replace premise codes with premise descriptions
+      tempfile["Premise"] <- left_join(tempfile,premise, by="Premise")["Premise Description"]
+    # append to df2
+    df2 <- bind_rows(df2, tempfile)
+  }
+}
+```
+
 
 ```{r generate some basic statics on data quality}
 
