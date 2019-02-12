@@ -32,8 +32,6 @@ for (i in 1:2) {
 
 BeatToZip <- as.tibble(readRDS("~/Rprojects/CrimeStats/BeatToZip.rds"))
 
-source("Edit_Addresses.R") # load in address edits
-
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
@@ -251,7 +249,7 @@ unmatched <- df %>%
   distinct() %>% 
   arrange(-n) # focus on most important first
 
-# edit addresses
+# edit addresses for spelling errors
 
 dict <- Makedict(dictionary)
 #   test them first
@@ -268,7 +266,8 @@ unmatched <-
          long=NA,
          tract=NA,
          block=NA,
-         status=NA )
+         status=NA,
+         GType=NA)
 
 ```
 
@@ -331,6 +330,12 @@ street_stds <- streets %>% #  standard names and suffixes
   
 setDT(street_stds, key="street")
 
+##########    save and/or read in streets standard suffix file
+
+saveRDS(street_stds,"~/Dropbox/CrimeStats/Street_Standard_Suffix.rds")
+
+street_stds <- readRDS("~/Dropbox/CrimeStats/Street_Standard_Suffix.rds")
+
 #     Correct street name suffixes
 
 getnewstreet <- function(checkstreet){
@@ -364,10 +369,34 @@ keep_unmatched <- unmatched
 unmatched <- unmatched2
 
 ```
+
+###   did match previously succeed?
+
+```{r check for previous hits}
+
+previous_match <- readRDS( "~/Dropbox/CrimeStats/CensusGeoTable_progress.rds")
+
+check_match <- function(test_Address, testdata){
+    # Did I already succeed at this match somewhere?
+    a <- testdata %>% filter(test_Address == Address,
+                              status=="success" )
+    if (nrow(a)>0){
+      return(a)
+    } else {return(FALSE)}
+}
+
+#   usage:
+#   a <- check_match(unmatched[i,], previous_match)
+#   if (is_tibble(a)) {unmatched[i,4:10] <- a[1,4:10]
+#      print("found previous match")}
+
+```
+
+
 ##  Census Geocoding
 
-Call census geocoder for first and last address, and on success
-average the two answers and add in the lat long values as well as other good stuff.
+Call census geocoder for address, and on success
+add in the lat long values as well as other good stuff.
 
 ```{r do geocoding}
 
@@ -440,47 +469,10 @@ getlatlong <- function(addr, beat, newaddr){
 
 ```
 
-```{r Do geocoding}
 
-#####################################
-##    spin through data geocoding
-#####################################
+##  match against census
 
-begin <- 1
-#for (i in begin:nrow(unmatched)) {
-for (i in begin:(begin+999)) {
-#for (i in 572:572) {
-  print(paste("--->",i,unmatched[i,1]))
-  newaddr <- "30"
-  if (grepl("FWY", unmatched[i,]$Address)){newaddr <- "15"}
-  latlong <- getlatlong(unmatched[i,]$Address, unmatched[i,]$Beat, newaddr)
-  if (latlong$status=="success") {
-    #print(paste("=======final=======",latlong[1,]))
-    unmatched[i,]$match_address  <- latlong$match_address
-    unmatched[i,]$lat            <- latlong$lat
-    unmatched[i,]$long           <- latlong$long
-    unmatched[i,]$tract          <- latlong$tract
-    unmatched[i,]$block          <- latlong$block
-    unmatched[i,]$geocode_status <- "census"
-    unmatched[i,]$status         <- latlong$status
-  } else {
-    unmatched[i,]$geocode_status <- "census fail"
-    unmatched[i,]$status         <- latlong$status
-  }
-}
-
-saveRDS(unmatched, "~/Dropbox/CrimeStats/CensusGeoTable_progress.rds")
-
-```
-
-
----- census errors (they want the wrong name)
-
-W DALLAS ST   -> W DALLAS AVE
-MID LN        -> MID LANE DR
-
-
-```{r do some stats}
+```{r Now work through census data}
 
 #   Percent of unique addresses found, and percent of total found
 
@@ -490,7 +482,7 @@ unmatched %>%
 
 # re-edit addresses
 
-unmatched <- readRDS( "~/Dropbox/CrimeStats/CensusGeoTable_progress.rds")
+#unmatched <- readRDS( "~/Dropbox/CrimeStats/CensusGeoTable_progress.rds")
 
 source("Edit_Addresses.R") # load in address edits
 
@@ -521,31 +513,44 @@ onlys <- c("S HEIGHTS", "EAST ST", "MID LANE", "WEST ST",
            "COTTAGE")
 
 ##########################################
-##    second spin through data geocoding
+##    spin through data geocoding
 ##########################################
 
+   a <- check_match(unmatched[i,], previous_match)
+   if (is_tibble(a)) {
+      unmatched[i,4:10] <- a[1,4:10]
+      print("found previous match")
+      next
+    }
 
-begin <- 1000
+begin <- 1
 for (i in begin:nrow(unmatched)) {
 #for (i in begin:(begin+999)) {
 #for (i in 572:572) {
   if (unmatched[i,]$status!="success"){ # only the redo's
     # skip hopeless cases
-    #if (any(str_detect(unmatched[i,]$Address, skips))){next()}
+    if (any(str_detect(unmatched[i,]$Address, skips))){next()}
     # only do selected cases
-    if (!any(str_detect(unmatched[i,]$Address, onlys))){next()}
+    #if (!any(str_detect(unmatched[i,]$Address, onlys))){next()}
     print(paste("--->",i,unmatched[i,1]))
     # Did I already succeed at this match somewhere?
-    a <- unmatched %>% filter(Address == unmatched[i,]$Address,
-                              status=="success" )
-    if (nrow(a)>0){
+    a <- check_match(unmatched[i,], previous_match)
+    if (is_tibble(a)) {
       unmatched[i,4:10] <- a[1,4:10]
-      print("found previous match")
+      print("found previous match in archive")
       next
     }
+    a <- check_match(unmatched[i,], unmatched)
+    if (is_tibble(a)) {
+      unmatched[i,4:10] <- a[1,4:10]
+      print("found previous match in current")
+      next
+    }
+    
     newaddr <- "30"
-    #special[grep(unmatched[i,1], special$match), ]
+     
     if (grepl("FWY", unmatched[i,]$Address)){newaddr <- "15"}
+    
     if(any(str_detect(unmatched[i,]$Address, special$match))){
       newaddr <- special[str_detect(unmatched[i,]$Address, special$match),]$addr
     }
@@ -821,7 +826,7 @@ skips <- c("HOMELESS", "PO BOX", "POBOX", "ENTRANCE", "P O BOX")
 ##    next spin through data geocoding
 ##########################################
 
-unmatched <- unmatched %>% mutate(GType=NA) # add new information column
+###unmatched <- unmatched %>% mutate(GType=NA) # add new information column
 
 
 geocodeQueryCheck()
