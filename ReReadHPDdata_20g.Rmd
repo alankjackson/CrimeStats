@@ -171,6 +171,8 @@ if ((yr=="09"&&mon %in% c("jan","feb","mar","apr","may","jun","jul","sep","nov")
 
 #     August 2017 district files missing, so read individual beat files instead
 
+Or maybe not
+
 ```{r read in August 2017 by beat}
 
 for (beat in beats)
@@ -246,7 +248,7 @@ for (beat in beats)
 #################################
 
 ##---new---##
-saveRDS(df2, file="~/Dropbox/CrimeStats/District2aRawData.rds")
+saveRDS(df2, file="~/Dropbox/CrimeStats/District20gRawData.rds")
 
 ```
 
