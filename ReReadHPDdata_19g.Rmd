@@ -639,7 +639,7 @@ df2$Street[grepl("POB\\s",df2$Street)] <- NA
 df2$Street[grepl("^PO\\s\\d*$",df2$Street)] <- NA
 df2$Street[grepl("\\sBOX\\s\\d*$",df2$Street)] <- NA
 
-df2$Street[grepl("^HOMELESS$",df2$Street)] <- NA
+#df2$Street[grepl("^HOMELESS$",df2$Street)] <- NA
 #   Now start tackling the more unique one-offs    
 tail(head(sort(unique(df2$Street)),100),100)
 
@@ -747,8 +747,8 @@ tail(head(sort(unique(df2$Street)),700),100)
 dictionary <- c(
                 "NEPU",          "NEPAU",
                 "NEW BROOK",     "NEWBROOK",
-                " AT ",          " @ ",
-                "PKWY\\s*[NSEW]$","PKWY"
+                " AT ",          " @ "
+#                "PKWY\\s*[NSEW]$","PKWY"
 )
 dict <- Makedict(dictionary)
 #   test them first
@@ -797,8 +797,8 @@ dictionary <- c(
                 "BELFORT",    "BELLFORT",
                 "WEST BRANCH",  "WESTBRANCH",
                 "WHITECAP",     "WHITE CAP",
-                "WSAM",         "W SAM",
-                "WSH",          "W SH"
+                "WSAM ",         "W SAM ",
+                "WSH$",          "W SH"
 )
 dict <- Makedict(dictionary)
 #   test them first
@@ -809,6 +809,8 @@ df2$Street[grepl("^UNKNOWN$",df2$Street)] <- NA
 
 tail(head(sort(unique(df2$Street)),1000),100)
 
+########     good to here
+keepdf2 <- df2
 #   If address is in Street field, extract it and create a block range from it
 
 maskaddr <- grepl("^\\d{3,5}\\s",df2$Street)
@@ -855,7 +857,7 @@ dictionary <- c(
                 " DRIV$",          "",
                 " STRE$",          "",
                 " SH6",            "SH 6",
-                "W SH",     "W SAM HOUSTON"
+                "W SH ",     "W SAM HOUSTON "
 )
 dict <- Makedict(dictionary)
 #   test them first
@@ -863,7 +865,9 @@ testregex(df2, "Street", dict)
 #   Apply
 df2 <- applyregex(df2, "Street", dict)
 
+########     good to here
 keepdf2 <- df2
+
 #####    work on highways separately
 #   Goals:
 #  EASTEX FWY, GULF FWY, KATY FWY, NORTH FWY, NORTHWEST FWY,
@@ -956,8 +960,9 @@ testregex(df2, "Street", dict)
 #   Apply
 df2 <- applyregex(df2, "Street", dict)
 #     Hwy 6
+###############################################  maska not mask
 maska <- grepl("S",df2$Suffix)
-df2$Street[maska] <- str_replace(df2$Street[mask],"^HWY 6$","S HWY 6")
+df2$Street[maska] <- str_replace(df2$Street[maska],"^HWY 6$","S HWY 6")
 
 #   
 maska <- grepl("FWY",df2$Type)
@@ -995,7 +1000,6 @@ df2 <- applyregex(df2, "Street", dict)
 
 #############   done with freeways
 
-keepdf2 <- df2
 
 ####################  One more check
 tail(head(sort(unique(df2$Street)),100),100)
@@ -1038,7 +1042,6 @@ sort(unique(df2$Street[mask&!maskout]))
 df2$Street[mask&!maskout] <- paste("W",df2$Street[mask&!maskout],sep=" ")
 
 df2$Street[grepl("^[NSEW] NA$",df2$Street)] <- NA
-keepdf2 <- df2
 
 ```
 

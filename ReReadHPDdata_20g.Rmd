@@ -590,7 +590,7 @@ df2$Type <- str_replace_all(df2$Type,"^CIR$","CIRCLE")
 #   copy Street to OldStreet to save it
 
 ##---new---##
-df$OldStreet <- df$Street
+df2$OldStreet <- df2$Street
 
 
 keepdf2 <- df2
@@ -689,7 +689,7 @@ df2$Street[grepl("POB\\s",df2$Street)] <- NA
 df2$Street[grepl("^PO\\s\\d*$",df2$Street)] <- NA
 df2$Street[grepl("\\sBOX\\s\\d*$",df2$Street)] <- NA
 
-df2$Street[grepl("^HOMELESS$",df2$Street)] <- NA
+#df2$Street[grepl("^HOMELESS$",df2$Street)] <- NA
 
 #   Now start tackling the more unique one-offs    
 tail(head(sort(unique(df2$Street)),100),100)
@@ -809,8 +809,8 @@ dictionary <- c(
                 " SUTIE",     "",
                 " MACY'S",     "",
                 " CV$",     "",
-                " AT ",          " @ ",
-                "PKWY\\s*[NSEW]$","PKWY"
+                " AT ",          " @ "
+#               "PKWY\\s*[NSEW]$","PKWY"
 )
 dict <- Makedict(dictionary)
 #   test them first
@@ -1142,7 +1142,7 @@ testregex(df2, "Street", dict)
 df2 <- applyregex(df2, "Street", dict)
 #     Hwy 6
 maska <- grepl("S",df2$Suffix)
-df2$Street[maska] <- str_replace(df2$Street[mask],"^HWY 6$","S HWY 6")
+df2$Street[maska] <- str_replace(df2$Street[maska],"^HWY 6$","S HWY 6")
 
 #   
 maska <- grepl("FWY",df2$Type)
