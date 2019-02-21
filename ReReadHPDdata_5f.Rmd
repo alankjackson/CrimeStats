@@ -206,7 +206,7 @@ for (beat in beats)
 #################################
 
 ##---new---##
-saveRDS(df, file="~/Dropbox/CrimeStats/District5fRawData.rds")
+saveRDS(df2, file="~/Dropbox/CrimeStats/District5fRawData.rds")
 
 ```
 
@@ -538,7 +538,7 @@ df2$Type <- str_replace_all(df2$Type,"^CIR$","CIRCLE")
 #   copy Street to OldStreet to save it
 
 ##---new---##
-df$OldStreet <- df$Street
+df2$OldStreet <- df2$Street
 
 keepdf2 <- df2
 #  EASTEX FWY, GULF FWY, KATY FWY, NORTH FWY, NORTHWEST FWY,
@@ -686,7 +686,7 @@ testregex(df2, "Street", dict)
 df2 <- applyregex(df2, "Street", dict)
 df2$Street[grepl("^1$",df2$Street)] <- NA 
 df2$Street[grepl("^DALLAS LOVE FIELD AIRPORT$",df2$Street)] <- NA 
-df2$Street[grepl("HOMELESS ",df2$Street)] <- NA 
+#df2$Street[grepl("HOMELESS ",df2$Street)] <- NA 
 tail(head(sort(unique(df2$Street)),300),100)
 
 tail(head(sort(unique(df2$Street)),400),100)
@@ -742,8 +742,8 @@ dictionary <- c(
                 "LANE TRLR 0",   "LN",
                 " AT ",          " @ ",
                 "WEST FOR",      "W FOR",
-                "WEST HOL",      "W HOL",
-                "PKWY\\s*[NSEW]$","PKWY"
+                "WEST HOL",      "W HOL"
+#                "PKWY\\s*[NSEW]$","PKWY"
 )
 dict <- Makedict(dictionary)
 #   test them first
@@ -957,7 +957,7 @@ testregex(df2, "Street", dict)
 df2 <- applyregex(df2, "Street", dict)
 #     Hwy 6
 maska <- grepl("S",df2$Suffix)
-df2$Street[maska] <- str_replace(df2$Street[mask],"^HWY 6$","S HWY 6")
+df2$Street[maska] <- str_replace(df2$Street[maska],"^HWY 6$","S HWY 6")
 
 #   
 maska <- grepl("FWY",df2$Type)

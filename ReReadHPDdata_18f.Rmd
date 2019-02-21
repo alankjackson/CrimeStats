@@ -13,7 +13,7 @@ library("lubridate") # handle dates
 
 PremiseTable = readRDS("/home/ajackson/mirrors/ajackson/crime/data/PremiseTable.rds")
 #   Read in translation table Premise to ShortPremise
-ptab <- read.csv("~/mirrors/ajackson/crime/data/ptable.csv")
+ptab <- read.csv("~/mirrors/ajackson/crime/data/ptable.csv", stringsAsFactors = FALSE)
 
 plotpath <- "/home/ajackson/Dropbox/CrimeStats/District_material/"
 
@@ -203,6 +203,7 @@ for (beat in beats)
 # Save the raw file
 #################################
 
+df2 <- df2 %>% mutate_if(is.factor, as.character)
 ##---new---##
 saveRDS(df2, file="~/Dropbox/CrimeStats/District18fRawData.rds")
 ```
@@ -660,7 +661,7 @@ df2$Street[grepl("PO BX",df2$Street)] <- NA
 df2$Street[grepl("^PO\\s\\d*$",df2$Street)] <- NA
 df2$Street[grepl("\\sBOX\\s\\d*$",df2$Street)] <- NA
 
-df2$Street[grepl("^HOMELESS$",df2$Street)] <- NA
+#df2$Street[grepl("^HOMELESS$",df2$Street)] <- NA
 
 #   Now start tackling the more unique one-offs    
 tail(head(sort(unique(df2$Street)),100),100)
@@ -782,8 +783,8 @@ dictionary <- c(
                 " AT ",          " @ ",
                 " ST A$",          "",
                 " /5106",          "",
-                "^OB ",    "",
-                "PKWY\\s*[NSEW]$","PKWY"
+                "^OB ",    ""
+#                "PKWY\\s*[NSEW]$","PKWY"
 )
 dict <- Makedict(dictionary)
 #   test them first
@@ -1012,7 +1013,7 @@ testregex(df2, "Street", dict)
 df2 <- applyregex(df2, "Street", dict)
 #     Hwy 6
 maska <- grepl("S",df2$Suffix)
-df2$Street[maska] <- str_replace(df2$Street[mask],"^HWY 6$","S HWY 6")
+df2$Street[maska] <- str_replace(df2$Street[maska],"^HWY 6$","S HWY 6")
 
 #   
 maska <- grepl("FWY",df2$Type)

@@ -13,7 +13,7 @@ library("lubridate") # handle dates
 
 PremiseTable = readRDS("/home/ajackson/mirrors/ajackson/crime/data/PremiseTable.rds")
 #   Read in translation table Premise to ShortPremise
-ptab <- read.csv("~/mirrors/ajackson/crime/data/ptable.csv")
+ptab <- read.csv("~/mirrors/ajackson/crime/data/ptable.csv", stringsAsFactors=FALSE)
 
 plotpath <- "/home/ajackson/Dropbox/CrimeStats/District_material/"
 
