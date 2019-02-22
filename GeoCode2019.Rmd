@@ -679,6 +679,7 @@ special <- tribble(
   ~match, ~addr,
   "GREENWAY PLAZA DR", "03",
   "SEAGLER ",          "03",
+  "EAGLE VISTA ",      "03",
   "HERMANN MUSEUM CIR DR", "03",
   "IRVINGTON BLVD",    "05",
   "LIVORNO WAY",       "05",
@@ -964,6 +965,12 @@ unmatched$Address[mask&(grepl(i, unmatched$Address))] <-
     "W SAM HOUSTON PKWY S", "S SAM HOUSTON PKWY W")
 }
 
+mask <- grepl("W SAM HOUSTON PKWY N", unmatched$Address) &
+        grepl("mismatch", unmatched$status)
+unmatched$Address[mask] <- 
+    str_replace(unmatched$Address[mask], " W ", " WEST ")
+
+
 ```
 
 
@@ -997,17 +1004,14 @@ unmatched <- applyregex(unmatched, "Address", dict)
 special <- tribble(
   ~match, ~addr,
   "GREENWAY PLAZA DR", "03",
+  "SEAGLER",           "03",
   "IRVINGTON BLVD",    "05",
   "N CALUMET",         "05",
-  "HARWIN",            "50",
-  "PRESSLER",          "00",
-  "SORELLA",           "00",
   "CUMMINS ST",        "15",
   "WEST DR",           "60",
   "SAWYER HEIGHTS",    "24",
   "N SAN JACINTO",     "15",
   "S HEIGHTS BLVD",    "15",
-  "SAM HOUSTON",       "28",
   "VERNON ST",         "15",
   "11TH PLACE",        "03",
   "DELWIN ST",         "15",
@@ -1022,7 +1026,7 @@ special <- tribble(
 
 skips <- c("HOMELESS", "PO BOX", "POBOX", "ENTRANCE", "P O BOX")
 
-onlys <- c("KATY", " HWY ", "CENTER")
+onlys <- c("KATY")
 
 ##########################################
 ##    next spin through data geocoding
@@ -1064,9 +1068,15 @@ for (i in begin:nrow(unmatched)) {
       print("found previous match in current")
       next
     }
+    a <- check_match(unmatched[i,]$Address, generated)
+    if (is_tibble(a)) {
+      unmatched[i,4:10] <- a[1,4:10]
+      print("found previous match in generated")
+      next
+    }
 
-    newaddr <- "30"
-    if (grepl("FWY", unmatched[i,]$Address)){newaddr <- "55"}
+    newaddr <- str_pad(as.character(sample(0:50, 1)),2,pad="0")
+    if (grepl("FWY", unmatched[i,]$Address)){newaddr <- "11"}
     if(any(str_detect(unmatched[i,]$Address, special$match))){
       newaddr <- special[str_detect(unmatched[i,]$Address, special$match),]$addr
     }
@@ -1141,7 +1151,42 @@ for (i in 1:2) {
 
 ```
 
-```{r fix mt vernon}
+```{r interpolate katy fwy}
+
+#   create dataframe of good lat long to interpolate with 
+dfstart <- 
+bind_rows(previous_match, unmatched) %>% 
+  filter(status=="success") %>% 
+  filter(grepl("katy fwy", tolower(match_address))) %>% 
+  select(match_address, lat, long) %>%
+  mutate(addr=as.numeric(str_extract(match_address, "^[0-9]+"))) %>% 
+  unique() %>% 
+  arrange(addr) 
+  
+#   Create points to interpolate to
+dftargets <- seq(2550,21750,by=100)
+
+# interpolate
+newlat <- approx(dfstart$addr, dfstart$lat, dftargets)
+newlon <- approx(dfstart$addr, dfstart$long, dftargets)
+
+#   Create a new dataframe with all "addresses" in it
+generated <- tibble(addr=newlat$x, lat=newlat$y, long=newlon$y) %>% 
+  mutate(Address=paste0(as.character(addr-50),"-",
+                        as.character(addr+49),
+                        " KATY FWY , Houston , TX")) %>% 
+  mutate(Beat=NA, n=0, geocode_status="generated", 
+         match_address=paste(as.character(addr),"Katy Fwy, Houston, TX"),
+         tract=NA, block=NA, status="success") %>% 
+  select(Address:match_address,lat, long, tract, block, status)
+
+saveRDS(generated, "~/Dropbox/CrimeStats/Generated_Coordinates.rds")
+
+```
+
+
+
+```{r fix stuff}
 
 mask <- grepl("MT VERNON", unmatched$RawAddress)
 
