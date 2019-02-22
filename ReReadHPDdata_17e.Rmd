@@ -13,7 +13,7 @@ library("lubridate") # handle dates
 
 PremiseTable = readRDS("/home/ajackson/mirrors/ajackson/crime/data/PremiseTable.rds")
 #   Read in translation table Premise to ShortPremise
-ptab <- read.csv("~/mirrors/ajackson/crime/data/ptable.csv")
+ptab <- read.csv("~/mirrors/ajackson/crime/data/ptable.csv", stringsAsFactors=FALSE)
 
 plotpath <- "/home/ajackson/Dropbox/CrimeStats/District_material/"
 
@@ -648,7 +648,7 @@ df2$Street[grepl("PO BX",df2$Street)] <- NA
 df2$Street[grepl("^PO\\s\\d*$",df2$Street)] <- NA
 df2$Street[grepl("\\sBOX\\s\\d*$",df2$Street)] <- NA
 
-df2$Street[grepl("^HOMELESS$",df2$Street)] <- NA
+#df2$Street[grepl("^HOMELESS$",df2$Street)] <- NA
 
 
 #   clean out numbers after road designations, and shorten
@@ -695,7 +695,7 @@ dictionary <- c(
                 " DR \\w*$",     " DR",
                 " AVEN$",      " AVE",
                 " STE [A-Z0-9 ]*$",   "",
-                "PKWY\\s*[NSEW]$","PKWY",
+#               "PKWY\\s*[NSEW]$","PKWY",
                 " ENTR?$",         ""
 )
 
@@ -995,7 +995,7 @@ testregex(df2, "Street", dict)
 df2 <- applyregex(df2, "Street", dict)
 #     Hwy 6
 maska <- grepl("S",df2$Suffix)
-df2$Street[maska] <- str_replace(df2$Street[mask],"^HWY 6$","S HWY 6")
+df2$Street[maska] <- str_replace(df2$Street[maska],"^HWY 6$","S HWY 6")
 
 #   
 maska <- grepl("FWY",df2$Type)
