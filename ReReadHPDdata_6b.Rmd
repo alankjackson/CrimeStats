@@ -218,7 +218,7 @@ sort(unique(df2$Beat))
 #################################
 
 ##---new---##
-saveRDS(df2, file="~/Dropbox/CrimeStats/District3bRawData.rds")
+saveRDS(df2, file="~/Dropbox/CrimeStats/District6bRawData.rds")
 ```
 
 
@@ -633,7 +633,7 @@ dictionary <- c(
                 "POB\\s","",
                 "PO BX","",
                 "^PO\\s\\d*$","",
-                "HOMELESS","",
+#                "HOMELESS","",
                 "\\sBOX\\s\\d*$",""
 )
 dict <- Makedict(dictionary)
@@ -1122,7 +1122,7 @@ df2 <- applyregex(df2, "Street", dict)
 #     Hwy 6
 maska <- grepl("S",df2$Suffix)
 sum(maska)
-df2$Street[maska] <- str_replace(df2$Street[mask],"^HWY 6$","S HWY 6")
+df2$Street[maska] <- str_replace(df2$Street[maska],"^HWY 6$","S HWY 6")
 
 #   
 maska <- grepl("FWY",df2$Type)
