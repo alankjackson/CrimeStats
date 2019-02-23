@@ -62,6 +62,12 @@ saveRDS(streets, file="~/Dropbox/CrimeStats/StreetAndZip.rds")
 
 ```{r cleanup}
 
+streets <- streets %>% 
+  group_by(Street) %>% 
+  summarize(list(Zip))
+
+saveRDS(streets, file="~/Dropbox/CrimeStats/StreetAndZip.rds")
+
 ```
 
 
