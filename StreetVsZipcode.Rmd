@@ -29,8 +29,8 @@ streets <- tibble(Name=character(),
                   Zip=character()
                   )
 
-for (letter in LETTERS) {
-    url = paste("http://www.gims.houstontx.gov/scps2/address/intersecting/htmlBackup/street_",letter,".html", sep="")
+for (letter in c(1:9,LETTERS)) {
+    url = paste("http://www.gims.houstontx.gov/scps2/address/rhgeo_street_",letter,".html", sep="")
     print(url)
     if (! url.exists(url)) {
       print("============================== no such url")
@@ -40,7 +40,7 @@ for (letter in LETTERS) {
   tempfile <- url %>% 
     read_html() %>% 
     html_nodes(xpath='/html/body/table') %>% 
-    html_table(header=TRUE)
+    html_table(header=FALSE)
     
   tempfile <- tempfile[[1]]
   
@@ -49,5 +49,19 @@ for (letter in LETTERS) {
   streets <- bind_rows(streets, tempfile)
 }
 
+streets <- streets %>% 
+  select(X1, X2) %>% 
+  rename(Street=X1, Zip=X2) %>% 
+  filter(Zip!="Zip Code")
+
+saveRDS(streets, file="~/Dropbox/CrimeStats/StreetAndZip.rds")
+
 ```
+
+## Clean up and turn zipcodes into a list for each street
+
+```{r cleanup}
+
+```
+
 
