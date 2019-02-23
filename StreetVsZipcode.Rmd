@@ -1,0 +1,53 @@
+---
+title: "Prepare Street vs zipcode file"
+author: "Alan Jackson"
+date: "February 23, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library("tidyverse")
+library("stringr") # string tools
+library("RCurl")
+library("rvest")# web scraping
+library("lettercase") # fiddle with letter case
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##  Read in files
+
+City of Houston has tables of street names and zip codes. Read these in
+to a tibble for later work.
+
+
+```{r read in files}
+
+# initialize empty data frame
+
+streets <- tibble(Name=character(),
+                  Zip=character()
+                  )
+
+for (letter in LETTERS) {
+    url = paste("http://www.gims.houstontx.gov/scps2/address/intersecting/htmlBackup/street_",letter,".html", sep="")
+    print(url)
+    if (! url.exists(url)) {
+      print("============================== no such url")
+      {next}
+    }
+    
+  tempfile <- url %>% 
+    read_html() %>% 
+    html_nodes(xpath='/html/body/table') %>% 
+    html_table(header=TRUE)
+    
+  tempfile <- tempfile[[1]]
+  
+  # append to streets
+  
+  streets <- bind_rows(streets, tempfile)
+}
+
+```
+
