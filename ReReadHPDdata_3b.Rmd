@@ -694,7 +694,7 @@ dictionary <- c(
                 " DR \\w*$",     " DR",
                 " AVEN$",      " AVE",
                 " STE [A-Z0-9 ]*$",   "",
-                "PKWY\\s*[NSEW]$","PKWY",
+#                "PKWY\\s*[NSEW]$","PKWY",
                 "\\d+O\\d+","",
                 " ENTR?$",         ""
 )
