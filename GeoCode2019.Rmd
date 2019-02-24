@@ -22,7 +22,7 @@ register_google(key = apikey)
 HoustonBdy <- c(-95.789963, 29.518566, -95.005814, 30.117875)
 BoundBox <- "bounds=29.518566,-95.789963|30.117875,-95.005814"
 
-reclean <- c("District20gReCleanData.rds" 
+reclean <- c("District5fReCleanData.rds" 
              )
 recleanpath <- "~/Dropbox/CrimeStats/"
 
@@ -297,97 +297,12 @@ getsuffix <- function(street) {
 
 ```
 
-##  create a file for checking suffixes
-
-```{r suffixes}
-
-# pull out good matched addresses
-
-addresses <- unmatched %>% filter(geocode_status=="census" |
-                                  geocode_status=="google") %>% 
-                   select(match_address) %>% 
-                   mutate(match_address=toupper(match_address)) %>% 
-                   unique() 
-#   strip out the street names
-streets <- addresses$match_address %>% map(getstreet) %>% unique()
-streets <- enframe(unlist(streets),value="street")
-
-#   separate street name from suffix
-street_stds <- streets %>% #  standard names and suffixes
-            rowwise() %>% 
-            mutate(suffix=getsuffix(street)) %>% 
-            mutate(street=str_remove(street, paste0(" ",suffix,"$"))) %>% 
-            select(-name)
-
-#   Look for streets with different suffixes
-
-street_stds %>% group_by(street) %>% filter(n()>1)
-
-#   Read in old data table for merging
-
-old <- readRDS("~/Dropbox/CrimeStats/Street_Standard_Suffix.rds")
-
-#     first time through
-street_stds <- old
-
-#   convert to data frame
-
-setDF(old)
-
-newstds <- bind_rows(old, street_stds) %>% unique()
-
-street_stds <- newstds
-
-# Convert to a data.table
-  
-setDT(street_stds, key="street")
-
-##########    save and/or read in streets standard suffix file
-
-saveRDS(street_stds,"~/Dropbox/CrimeStats/Street_Standard_Suffix.rds")
-
-
-#     Correct street name suffixes
-
-getnewstreet <- function(checkstreet){
-  ans <- street_stds[.(checkstreet), nomatch=NULL]
-  setDF(ans)
-  if(nrow(ans)==1) {return(paste(ans$street, ans$suffix))
-  }
-  else {return(checkstreet)}
-}
-
-unmatched2 <- 
-  unmatched %>% 
-  rowwise() %>% 
-  mutate(street=getoldstreet(Address)) %>% 
-  rowwise() %>% 
-  mutate(newstreet=getnewstreet(street)) %>% 
-  select(-street)
-
-#   Update Address field with repaired street names
-
-for (i in 1:nrow(unmatched2)) {
-  x <- unlist(strsplit(unlist(unmatched2[i,]$Address), ","))
-  city <- trimws(x[2])
-  state <- trimws(x[3])
-  adr <- str_extract(x[1], "^[0-9]+-[0-9]+")
-  address <- paste(adr, unmatched2[i,]$newstreet, ",", city, ",", state)
-  unmatched2[i,]$Address <- address
-}
-
-unmatched2 <- unmatched2 %>% select(Address:newstreet, RawAddress)
-
-keep_unmatched <- unmatched
-unmatched <- unmatched2
-
-```
-
 ###   did match previously succeed?
 
 ```{r check for previous hits}
 
 previous_match <- readRDS( "~/Dropbox/CrimeStats/CensusGeoTable_progress.rds")
+generated <- readRDS( "~/Dropbox/CrimeStats/Generated_Coordinates.rds")
 
 check_match <- function(test_Address, testdata){
     # Did I already succeed at this match somewhere?
@@ -696,7 +611,7 @@ special <- tribble(
 
 # Skip these, census won't get them, this will speed things up
 
-skips <- c("S HEIGHTS", "FWY", "HOMELESS", "PO BOX", "POBOX","WASHINGTON", "HAYS", "POST OAK", "SAM HOUSTON", "PKWY", "WOODFAIR")
+skips <- c("S HEIGHTS", "FWY", "HOMELESS", "PO BOX", "POBOX","WASHINGTON", "HAYS", "POST OAK", "WOODFAIR")
 
 onlys <- c("SYNOTT", "WILCREST", "BELLFORT")
 
@@ -1009,10 +924,13 @@ special <- tribble(
   "N CALUMET",         "05",
   "CUMMINS ST",        "15",
   "WEST DR",           "60",
+  "BUSINESS CENTER",   "40",
   "SAWYER HEIGHTS",    "24",
   "N SAN JACINTO",     "15",
   "S HEIGHTS BLVD",    "15",
   "VERNON ST",         "15",
+  "HWY 6 N",           "00",
+  "PARK ROW",          "10",
   "11TH PLACE",        "03",
   "DELWIN ST",         "15",
   "MEMORIAL CT",       "15",
@@ -1026,7 +944,7 @@ special <- tribble(
 
 skips <- c("HOMELESS", "PO BOX", "POBOX", "ENTRANCE", "P O BOX")
 
-onlys <- c("KATY")
+onlys <- c("HWY 6")
 
 ##########################################
 ##    next spin through data geocoding
