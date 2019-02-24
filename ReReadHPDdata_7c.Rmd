@@ -746,7 +746,7 @@ tail(head(sort(unique(df2$Street)),200),100)
 dictionary <- c(
                 "BIRNAMWOOD",     "BIRNAM WOOD",
                 "BRACKEN RIDGE", "BRACKENRIDGE",
-                "BUSH AIRPORT 2800 ", "",
+                "BUSH AIRPORT ", "",
                 "BW 8", "N SAM HOUSTON PKWY",
                 " 2$", ""
 )
@@ -840,7 +840,7 @@ dictionary <- c(
                 "NORTH LOOP EAST",   "NORTH LOOP",
                 "NORTH LP E",     "NORTH LOOP",
                 "N US 59 FWY", "EASTEX FWY",
-                "PARKWAY EAST", "PKWY"
+                "PARKWAY EAST", "PKWY E"
 )
 dict <- Makedict(dictionary)
 #   test them first
@@ -1074,7 +1074,7 @@ sort(unique(df2$Street[maskloop]))
 dictionary <- c(
                 "HWY 69",          "SOUTHWEST FWY", # only this district
                 "IH 10",           "KATY FWY", # ditto
-                "N IH 610",          "NORTH LOOP"
+                "N IH 610",          "N LOOP"
 )
 dict <- Makedict(dictionary)
 #   test them first
