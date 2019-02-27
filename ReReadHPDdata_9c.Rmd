@@ -14,6 +14,7 @@ library("lubridate") # handle dates
 PremiseTable = readRDS("/home/ajackson/mirrors/ajackson/crime/data/PremiseTable.rds")
 #   Read in translation table Premise to ShortPremise
 ptab <- read.csv("~/mirrors/ajackson/crime/data/ptable.csv", stringsAsFactors = FALSE)
+ptab <- ptab %>% mutate(ShortPremise=trimws(ShortPremise))
 
 plotpath <- "/home/ajackson/Dropbox/CrimeStats/District_material/"
 
@@ -219,6 +220,12 @@ df2$Beat <- str_replace(df2$Beat, "e", "E")
 df2$Beat <- str_replace(df2$Beat, "'", "")
 sort(unique(df2$Beat))
 
+#################################
+# Save the raw file
+#################################
+
+##---new---##
+saveRDS(df2, file="~/Dropbox/CrimeStats/District9cRawData.rds")
 
 ```
 
@@ -558,11 +565,17 @@ df2$Type <- str_replace_all(df2$Type,"FWYFWY","FWY")
 df2$Type <- str_replace_all(df2$Type,"^CIR$","CIRCLE") 
 sort(unique(df2$Type))
 ```
-***********************   stopped here Tuesday Mar 27
+
+
+
 ```{r Check Street}
 #################################
 # Street
 #################################
+#   copy Street to OldStreet to save it
+
+##---new---##
+df2$OldStreet <- df2$Street
 
 keepdf2 <- df2
 #  EASTEX FWY, GULF FWY, KATY FWY, NORTH FWY, NORTHWEST FWY,
@@ -648,8 +661,8 @@ df2$Street[grepl("PO BX",df2$Street)] <- NA
 df2$Street[grepl("^PO\\s\\d*$",df2$Street)] <- NA
 df2$Street[grepl("\\sBOX\\s\\d*$",df2$Street)] <- NA
 
-df2$Street <- str_replace(df2$Street, " HOMELESS", "")
-df2$Street[grepl("^HOMELESS$",df2$Street)] <- NA
+#df2$Street <- str_replace(df2$Street, " HOMELESS", "")
+#df2$Street[grepl("^HOMELESS$",df2$Street)] <- NA
 
 
 #   clean out numbers after road designations, and shorten
@@ -702,7 +715,7 @@ dictionary <- c(
                 " DR \\w*$",     " DR",
                 " AVEN$",      " AVE",
                 " STE [A-Z0-9 ]*$",   "",
-                "PKWY\\s*[NSEW]$","PKWY",
+#                "PKWY\\s*[NSEW]$","PKWY",
                 "\\d+O\\d+","",
                 " ENTR?$",         ""
 )
@@ -763,8 +776,8 @@ dictionary <- c(
                 " LP ", " LOOP ",
                 " B32", "",
                 "E IH 10 FWY", "EAST FWY",
-                "E IH 610 FWY N", "EAST LOOP",
-                "PARKWAY N", "PKWY"
+                "E IH 610 FWY N", "E LOOP N FWY"
+#                "PARKWAY N", "PKWY"
 )
 dict <- Makedict(dictionary)
 #   test them first
@@ -775,7 +788,7 @@ tail(head(sort(unique(df2$Street)),300),100)
 
 tail(head(sort(unique(df2$Street)),400),100)
 dictionary <- c(
-                "HOMLESS",   "",
+                "HOMLESS",   "HOMELESS",
                 "HWY 90", "CROSBY FWY",
                 "IH 10$", "EAST FWY",
                 "IH 10", "EAST",
@@ -806,8 +819,9 @@ tail(head(sort(unique(df2$Street)),600),100)
 dictionary <- c(
                 "NEWTERRITORY",    "NEW TERRITORY",
                 "NORTH LOOP", "N LOOP",
-                "N LOOP EAST", "N LOOP",
-                "N LOOP E", "N LOOP",
+                "N LOOP EAST", "N LOOP E FWY",
+                "N LOOP E", "N LOOP E FWY",
+                "@ MCCARTY",        "",
                 "RAINYMEADOW", "RAINY MEADOW"
 )
 dict <- Makedict(dictionary)
@@ -1044,10 +1058,10 @@ df2$Street[maskloop] <- str_replace(df2$Street[maskloop], " E$","")
 df2$Street[maskloop] <- str_replace(df2$Street[maskloop], " W$","")
 df2$Street[maskloop] <- str_replace(df2$Street[maskloop], " N$","")
 df2$Street[maskloop] <- str_replace(df2$Street[maskloop], " S$","")
-df2$Street[maskloop] <- str_replace(df2$Street[maskloop], "^E ","EAST ")
-df2$Street[maskloop] <- str_replace(df2$Street[maskloop], "^W ","WEST ")
-df2$Street[maskloop] <- str_replace(df2$Street[maskloop], "^N ","NORTH ")
-df2$Street[maskloop] <- str_replace(df2$Street[maskloop], "^S ","SOUTH ")
+df2$Street[maskloop] <- str_replace(df2$Street[maskloop], "^EAST ","E ")
+df2$Street[maskloop] <- str_replace(df2$Street[maskloop], "^WEST ","W ")
+df2$Street[maskloop] <- str_replace(df2$Street[maskloop], "^NORTH ","N ")
+df2$Street[maskloop] <- str_replace(df2$Street[maskloop], "^SOUTH ","S ")
 df2$Street <- str_replace(df2$Street, "WEST LOOP SOUTH LOOP","WEST LOOP")
 sort(unique(df2$Street[maskloop]))
 
@@ -1055,6 +1069,8 @@ sort(unique(df2$Street[maskloop]))
 dictionary <- c(
                 "HWY 69",          "SOUTHWEST FWY", # only this district
                 "IH 10",           "KATY FWY", # ditto
+                "@ N MCCARTY",     "", 
+                "FWY FWY",         "FWY", 
                 "N IH 610",          "NORTH LOOP"
 )
 dict <- Makedict(dictionary)
@@ -1066,20 +1082,20 @@ df2 <- applyregex(df2, "Street", dict)
 #   use suffix to place loop as either NORTH or WEST
 masksuffix <- grepl("N", df2$Suffix)
 maskloop <- grepl("^LOOP$", df2$Street)
-df2$Street[masksuffix&maskloop] <- "NORTH LOOP"
+df2$Street[masksuffix&maskloop] <- "N LOOP FWY"
 masksuffix <- grepl("W", df2$Suffix)
 maskloop <- grepl("^LOOP$", df2$Street)
-df2$Street[masksuffix&maskloop] <- "WEST LOOP"
+df2$Street[masksuffix&maskloop] <- "W LOOP FWY"
 masksuffix <- grepl("S", df2$Suffix)
 maskloop <- grepl("^LOOP$", df2$Street)
-df2$Street[masksuffix&maskloop] <- "SOUTH LOOP"
+df2$Street[masksuffix&maskloop] <- "S LOOP FWY"
 masksuffix <- grepl("E", df2$Suffix)
 maskloop <- grepl("^LOOP$", df2$Street)
-df2$Street[masksuffix&maskloop] <- "EAST LOOP"
+df2$Street[masksuffix&maskloop] <- "E LOOP FWY"
 
 # take a guess
-df2$Street <- str_replace(df2$Street, "^LOOP$","NORTH LOOP")
-df2$Street <- str_replace(df2$Street, "^LOOP E$","NORTH LOOP")
+df2$Street <- str_replace(df2$Street, "^LOOP$","N LOOP FWY")
+df2$Street <- str_replace(df2$Street, "^LOOP E$","N LOOP E FWY")
 
 #   various freeways
 
@@ -1107,7 +1123,7 @@ df2 <- applyregex(df2, "Street", dict)
 #     Hwy 6
 maska <- grepl("S",df2$Suffix)
 sum(maska)
-df2$Street[maska] <- str_replace(df2$Street[mask],"^HWY 6$","S HWY 6")
+df2$Street[maska] <- str_replace(df2$Street[maska],"^HWY 6$","S HWY 6")
 
 #   
 maska <- grepl("FWY",df2$Type)
@@ -1131,7 +1147,11 @@ dictionary <- c(
                 "^NORTH SAM HOUSTON PKWY","N SAM HOUSTON PKWY", 
                 "PKWY SOUTH", "PKWY",
                 "^SOUTHWEST PKWY$","SOUTHWEST FWY",
-                "^SOUTHWEST$","SOUTHWEST FWY"
+                "^SOUTHWEST$","SOUTHWEST FWY",
+                "^N LOOP$", "N LOOP FWY",
+                "^S LOOP$", "S LOOP FWY",
+                "^E LOOP$", "E LOOP FWY",
+                "^W LOOP$", "W LOOP FWY"
                 ) 
 dict <- Makedict(dictionary)
 #   test them first
@@ -1190,10 +1210,6 @@ keepdf2 <- df2
 # Save the results
 #################################
 
-saveRDS(df2, file=paste("~/Dropbox/CrimeStats/District",district,"CleanData.rds",sep=""))
-######################################
-#########   stopped here
-######################################
-###############################    stopped here Tuesday Mar 6
+saveRDS(df2, file=paste("~/Dropbox/CrimeStats/District",district,"ReCleanData.rds",sep=""))
 ```
 
