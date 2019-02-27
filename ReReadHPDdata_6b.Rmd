@@ -552,7 +552,7 @@ df2$Type <- str_replace_all(df2$Type,"FWY SER","FWY")
 df2$Type <- str_replace_all(df2$Type,"FWYSER","FWY") 
 df2$Type <- str_replace_all(df2$Type,"^CIR$","CIRCLE") 
 ```
-***********************   stopped here Wednesday Mar 21
+*********************   stopped here Wednesday Mar 21
 ```{r Check Street}
 #################################
 # Street
