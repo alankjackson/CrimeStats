@@ -630,7 +630,7 @@ dictionary <- c(
                 " [IO]B ",         "",
                 " STREET$",       " ST",
                 " STREET",        "",
-                "AVENUE",        "AVE",
+                "AVENUE$",        "AVE",
                 "([A-Z ]){1}/([A-Z ]){1}",  "\\1 @ \\2", #  intersections
                 "  ",             " ",   #  remove any double spaces
                 " EXIT$",         "",
@@ -740,7 +740,7 @@ dictionary <- c(
   "^1 2 ",     "" ,
   "^[25] ",     "",
   "^59 ",     "EASTEX FWY",
-  "6101 ",     "",
+  "HOMELESS 6101 ",     "6101 ",
   "^A ",     "",
   "^B$",     "",
   "^AVE$",     "",
@@ -843,7 +843,7 @@ tail(head(sort(unique(df2$Street)),700),100)
 tail(head(sort(unique(df2$Street)),800),100)
 dictionary <- c(
                 " 857H",  "",
-                " NRTH", ""
+                " NRTH", " N"
 )
 dict <- Makedict(dictionary)
 #   test them first
