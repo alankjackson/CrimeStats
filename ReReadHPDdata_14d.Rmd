@@ -898,8 +898,8 @@ tail(head(sort(unique(df2$Street)),1100),100)
 
 tail(head(sort(unique(df2$Street)),1200),100)
 dictionary <- c(
-  " EAST SERVICE$", "",
-  "PARKWAY EAST", "PKWY",
+  " EAST SERVICE$", " E",
+  "PARKWAY EAST", "PKWY E",
   "^SAINT ", "ST ",
   "SUGARBUSH", "SUGAR BUSH",
   "SURCOURT", "SUR CT",
