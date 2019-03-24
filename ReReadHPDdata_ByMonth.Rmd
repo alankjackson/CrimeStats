@@ -14,6 +14,7 @@ library("lubridate") # handle dates
 PremiseTable = readRDS("/home/ajackson/mirrors/ajackson/crime/data/PremiseTable.rds")
 #   Read in translation table Premise to ShortPremise
 ptab <- read.csv("~/mirrors/ajackson/crime/data/ptable.csv", stringsAsFactors = FALSE)
+ptab <- ptab %>% mutate(ShortPremise=trimws(ShortPremise))
 
 plotpath <- "/home/ajackson/Dropbox/CrimeStats/MonthlyRead/"
 
@@ -166,6 +167,12 @@ df2$Beat <- str_replace(df2$Beat, "e", "E")
 df2$Beat <- str_replace(df2$Beat, "'", "")
 sort(unique(df2$Beat))
 
+#################################
+# Save the raw file
+#################################
+
+##---new---##
+saveRDS(df2, file=paste0("~/Dropbox/CrimeStats/AllDistrictsFor_",mon,yr,"RawData.rds"))
 
 ```
 
@@ -514,6 +521,11 @@ ggsave(paste("Monthly_",mon,"_",yr,"_IncidentsPerDayPerBeat.jpeg", sep=""), devi
 # Street
 #################################
 
+#   copy Street to OldStreet to save it
+
+##---new---##
+df2$OldStreet <- df2$Street
+
 keepdf2 <- df2
 #  EASTEX FWY, GULF FWY, KATY FWY, NORTH FWY, NORTHWEST FWY,
 #  SOUTHWEST FWY, SOUTH FWY, EAST FWY, N SAM HOUSTON PKWY,
@@ -565,7 +577,7 @@ dictionary <- c(
                 " [IO]B ",         "",
                 " STREET$",       " ST",
                 " STREET",        " ST",
-                "AVENUE",        "AVE",
+                "AVENUE$",        "AVE",
                 "([A-Z ]){1}/([A-Z ]){1}",  "\\1 @ \\2", #  intersections
                 "  ",             " ",   #  remove any double spaces
                 " EXIT$",         "",
@@ -598,8 +610,8 @@ df2$Street[grepl("^P *O\\s\\d*$",df2$Street)] <- NA
 df2$Street[grepl("^P *O\\s*B\\s*\\d*$",df2$Street)] <- NA
 
 df2$Street <- str_replace(df2$Street, " *HOMELESS *", "")
-df2$Street[grepl("^HOMELESS$",df2$Street)] <- NA
-df2$Street[grepl("HOMELESS",df2$Street)] <- NA
+#df2$Street[grepl("^HOMELESS$",df2$Street)] <- NA
+#df2$Street[grepl("HOMELESS",df2$Street)] <- NA
 
 dictionary <- c(
                 " *P*O* BOX\\s\\d* *","",
@@ -662,7 +674,7 @@ dictionary <- c(
                 " DR \\w*$",     " DR",
                 " AVEN$",      " AVE",
                 " STE [A-Z0-9 ]*$",   "",
-                "PKWY\\s*[NSEW]$","PKWY",
+#                "PKWY\\s*[NSEW]$","PKWY",
                 "\\d+O\\d+","",
                 " ENTR?$",         ""
 )
@@ -1083,12 +1095,12 @@ tail(head(sort(unique(df2$Street)),3000),100)
 tail(head(sort(unique(df2$Street)),3100),100)
 dictionary <- c(
   "SOUTHBRAESWOOD", "SOUTH BRAESWOOD",
-  "^N LOOP [EW]", "NORTH LOOP",
-  "^S LOOP [EW]", "SOUTH LOOP",
-  "^W LOOP [NS]", "WEST LOOP",
-  "^E LOOP [NS]", "EAST LOOP",
-  "SOUTH LOOP EAST", "SOUTH LOOP",
-  "SOUTH LOOP WEST", "SOUTH LOOP",
+#  "^N LOOP [EW]", "NORTH LOOP",
+#  "^S LOOP [EW]", "SOUTH LOOP",
+#  "^W LOOP [NS]", "WEST LOOP",
+#  "^E LOOP [NS]", "EAST LOOP",
+#  "SOUTH LOOP EAST", "SOUTH LOOP",
+#  "SOUTH LOOP WEST", "SOUTH LOOP",
   "LOOP LOOP", "LOOP"
 )
 dict <- Makedict(dictionary)
@@ -1277,10 +1289,10 @@ df2$Street[maskloop] <- str_replace(df2$Street[maskloop], " E$","")
 df2$Street[maskloop] <- str_replace(df2$Street[maskloop], " W$","")
 df2$Street[maskloop] <- str_replace(df2$Street[maskloop], " N$","")
 df2$Street[maskloop] <- str_replace(df2$Street[maskloop], " S$","")
-df2$Street[maskloop] <- str_replace(df2$Street[maskloop], "^E ","EAST ")
-df2$Street[maskloop] <- str_replace(df2$Street[maskloop], "^W ","WEST ")
-df2$Street[maskloop] <- str_replace(df2$Street[maskloop], "^N ","NORTH ")
-df2$Street[maskloop] <- str_replace(df2$Street[maskloop], "^S ","SOUTH ")
+df2$Street[maskloop] <- str_replace(df2$Street[maskloop], "^EAST ","E ")
+df2$Street[maskloop] <- str_replace(df2$Street[maskloop], "^WEST ","W ")
+df2$Street[maskloop] <- str_replace(df2$Street[maskloop], "^NORTH ","N ")
+df2$Street[maskloop] <- str_replace(df2$Street[maskloop], "^SOUTH ","S ")
 sort(unique(df2$Street[maskloop]))
 
 #   Work each ambiguous freeway separately, leveraging off the
@@ -1549,7 +1561,7 @@ keepdf2 <- df2
 # Save the results
 #################################
 
-saveRDS(df2, file=paste("~/Dropbox/CrimeStats/AllDistrictsFor_",mon,yr,"CleanData.rds",sep=""))
+saveRDS(df2, file=paste("~/Dropbox/CrimeStats/AllDistrictsFor_",mon,yr,"ReCleanData.rds",sep=""))
 
 
 
