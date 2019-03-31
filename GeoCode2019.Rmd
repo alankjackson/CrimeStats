@@ -762,10 +762,6 @@ for (beat in samSE){
   unmatched$Address[mask&(unmatched$Beat==beat)] <-
     str_replace(unmatched$Address[mask&(unmatched$Beat==beat)], "SAM HOUSTON PKWY", "S SAM HOUSTON PKWY E")
 }
-for (beat in samNW){
-  unmatched$Address[mask&(unmatched$Beat==beat)] <-
-    str_replace(unmatched$Address[mask&(unmatched$Beat==beat)], "SAM HOUSTON PKWY", "N SAM HOUSTON PKWY W")
-}
 for (beat in samNE){
   unmatched$Address[mask&(unmatched$Beat==beat)] <-
     str_replace(unmatched$Address[mask&(unmatched$Beat==beat)], "SAM HOUSTON PKWY", "N SAM HOUSTON PKWY E")
@@ -824,7 +820,7 @@ special <- tribble(
 
 skips <- c("S HEIGHTS", "FWY", "HOMELESS", "PO BOX", "POBOX","TOMBALL", "HEMPSTEAD", "POST OAK", "1960", "WILCREST", " SAM ", "HONEYWELL", "BELLFORT", "AVENUE" )
 
-onlys <- c("ROWLETT ", "BAYBROOK")
+onlys <- c("EVERGREEN ")
 
 ##########################################
 ##    spin through data geocoding
@@ -1093,15 +1089,15 @@ unmatched <- applyregex(unmatched, "Address", dict)
 #    special cases - digits replace last 2 on address
 special <- tribble(
   ~match, ~addr,
-  "S SAM",          "45",
-  "LUTHER",          "70"
+  "BLACKHAWK",      "95",
+  "POINTE",         "66"
 )
 
 # Skip these, won't get them, this will speed things up
 
 skips <- c("HOMELESS", "PO BOX", "POBOX", "ENTRANCE", "P O BOX")
 
-onlys <- c("FUQUA", "HOLLOW", "SILVER", "CURVEY")
+onlys <- c(" FLORA ", "JUNIPER", "KINGSPASS")
 
 ##########################################
 ##    next spin through data geocoding
@@ -1122,7 +1118,7 @@ for (i in begin:nrow(unmatched)) {
     # skip hopeless cases
     #if (any(str_detect(unmatched[i,]$Address, skips))){next()}
     # only do selected cases
-    #if (!any(str_detect(unmatched[i,]$Address, onlys))){next()}
+    if (!any(str_detect(unmatched[i,]$Address, onlys))){next()}
     # skip distance <10 cases
     #if (unmatched[i,]$status=="Distance = 0"){next()}
     # skip GEOMETRIC_CENTER cases
@@ -1264,10 +1260,14 @@ northfwy <- Fwy_interpolate(previous_match, unmatched, "North Fwy", 150, 17150)
 eastex <- Fwy_interpolate(previous_match, unmatched, "Eastex Fwy", 950, 24350)
 NSamE <- Fwy_interpolate(previous_match, unmatched, "N SAM HOUSTON PKWY E", 650, 9850)
 SSamE <- Fwy_interpolate(previous_match, unmatched, "S SAM HOUSTON PKWY E", 3550, 6450)
+SSamE2 <- Fwy_interpolate(previous_match, unmatched, "S SAM HOUSTON PKWY E", 9250, 12450)
+ESamS <- Fwy_interpolate(previous_match, unmatched, "EAST SAM HOUSTON PKWY S", 5450, 7950)
 Gulf <- Fwy_interpolate(previous_match, unmatched, "GULF FWY", 550, 19550)
+Blackhawk <- Fwy_interpolate(previous_match, unmatched, "BLACKHAWK BLVD", 8450, 9850)
+Evergreen <- Fwy_interpolate(previous_match, unmatched, "VILLAGE EVERGREEN TRAIL", 14550, 9850)
 
 #generated <- bind_rows(katy, northfwy, eastex, NSamE) 
-generated <- bind_rows(generated, Gulf) 
+generated <- bind_rows(generated, SSamE2) 
 
 #---------------------------------------
 #   E LOOP FWY is special
@@ -1314,6 +1314,15 @@ mask <- grepl("MT VERNON", unmatched$RawAddress)
 unmatched[mask,]$newstreet <- "MT VERNON ST"
 unmatched[mask,]$status    <- "Names mismatch"
 unmatched[mask,]$Address  <- str_replace(unmatched[mask,]$Address, "9 V", "9 MT V")
+
+#-------------------------------------
+
+mask <- grepl("7900-7999 EAST SAM HOUSTON PKWY S", unmatched$Address)
+
+unmatched[mask,]$lat <- 29.607578
+unmatched[mask,]$long <- -95.204026
+unmatched[mask,]$status    <- "success"
+unmatched[mask,]$geocode_status    <- "google"
 
 #-------------------------------------
 
