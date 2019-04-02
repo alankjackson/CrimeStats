@@ -22,7 +22,7 @@ register_google(key = apikey)
 HoustonBdy <- c(-95.789963, 29.518566, -95.005814, 30.117875)
 BoundBox <- "bounds=29.518566,-95.789963|30.117875,-95.005814"
 
-district <- "12d"
+district <- "15e"
 reclean <- c(paste0("District",district,"ReCleanData.rds"))
 recleanpath <- "~/Dropbox/CrimeStats/"
 
@@ -587,6 +587,13 @@ unmatched <- special_case(unmatched,
                  29.960285, 
                  -95.539956)
 
+mask <- grepl("BRAESWOOD SQUARE", unmatched$Address) 
+unmatched <- special_case(unmatched, 
+                 mask, 
+                 "5300 N Braeswood Blvd , Houston, TX 77096", 
+                 29.679012, 
+                 -95.478179)
+
 mask <- grepl("WOODLAKE SQUARE", unmatched$Address) 
 unmatched <- special_case(unmatched, 
                  mask, 
@@ -624,7 +631,7 @@ keep_unmatched <- unmatched
 #   Changeover from S Sam E to S Sam W is 288, South Fwy
 #   Google in error, thinks S Sam W is W Sam S from addresses>11,000
 #
-#   West Loop is W LOOP N/S FWY,   chamgeover is Buffalo Bayou
+#   West Loop is W LOOP N/S FWY,   changeover is Buffalo Bayou
 
 samWS <- c("19G10", "19G20", "19G30", "19G40", "19G50", "20G10", "20G20", "20G30", "20G40")
 samWN <- c("20G50", "20G60", "5F30", "4F10", "4F20", "4F30")
@@ -647,8 +654,10 @@ LoopNE = c("3B50", "2A10", "3B50", "7C20", "8C30", "9C30", "9C20")
 LoopEN = c("9C20", "9C30", "9C10")
 LoopES = c("11H20")
 
-LoopSE = c("11H30", "11H20", "13D10", "14D10", "14D30", "14D20", "14D40", "15E40")
-LoopSW = c("15E30", "15E10")
+# beat 15E40 has LoopSE according to ESRI, 
+# but LoopSW according to Google which correct
+LoopSE = c("11H30", "11H20", "13D10", "14D10", "14D30", "14D20", "14D40")
+LoopSW = c("15E30", "15E10", "15E40")
 
 PostOakN <- c("18F10", "5F10")
 PostOakS <- c("18F20")
@@ -820,7 +829,7 @@ special <- tribble(
 
 skips <- c("S HEIGHTS", "FWY", "HOMELESS", "PO BOX", "POBOX","TOMBALL", "HEMPSTEAD", "POST OAK", "1960", "WILCREST", " SAM ", "HONEYWELL", "BELLFORT", "AVENUE" )
 
-onlys <- c("EVERGREEN ")
+onlys <- c(" LOOP ", " BELLFORT ")
 
 ##########################################
 ##    spin through data geocoding
@@ -839,7 +848,7 @@ for (i in begin:nrow(unmatched)) {
     # skip hopeless cases
     if (any(str_detect(unmatched[i,]$Address, skips))){next()}
     # only do selected cases
-    if (!any(str_detect(unmatched[i,]$Address, onlys))){next()}
+    #if (!any(str_detect(unmatched[i,]$Address, onlys))){next()}
     trys <- trys + 1
     print(paste("--->",i,unmatched[i,1], 
                 now()+((now()-starttime)/trys)*(nrow(unmatched)-i)
@@ -1089,7 +1098,7 @@ unmatched <- applyregex(unmatched, "Address", dict)
 #    special cases - digits replace last 2 on address
 special <- tribble(
   ~match, ~addr,
-  "BLACKHAWK",      "95",
+  "MCKNIGHT",      "22",
   "POINTE",         "66"
 )
 
@@ -1097,7 +1106,7 @@ special <- tribble(
 
 skips <- c("HOMELESS", "PO BOX", "POBOX", "ENTRANCE", "P O BOX")
 
-onlys <- c(" FLORA ", "JUNIPER", "KINGSPASS")
+onlys <- c(" BRAESWOOD ", "MCKNIGHT", "KEELY")
 
 ##########################################
 ##    next spin through data geocoding
@@ -1116,11 +1125,11 @@ for (i in begin:nrow(unmatched)) {
     if (grepl("99 +,", unmatched[i,]$Address)){print("--no street--")
       next()}
     # skip hopeless cases
-    #if (any(str_detect(unmatched[i,]$Address, skips))){next()}
+    if (any(str_detect(unmatched[i,]$Address, skips))){next()}
     # only do selected cases
     if (!any(str_detect(unmatched[i,]$Address, onlys))){next()}
     # skip distance <10 cases
-    #if (unmatched[i,]$status=="Distance = 0"){next()}
+    if (unmatched[i,]$status=="Distance = 0"){next()}
     # skip GEOMETRIC_CENTER cases
     #if(!is.na(unmatched[i,]$GType) &
     #    unmatched[i,]$GType == "GEOMETRIC_CENTER route") {next()}
@@ -1314,6 +1323,12 @@ mask <- grepl("MT VERNON", unmatched$RawAddress)
 unmatched[mask,]$newstreet <- "MT VERNON ST"
 unmatched[mask,]$status    <- "Names mismatch"
 unmatched[mask,]$Address  <- str_replace(unmatched[mask,]$Address, "9 V", "9 MT V")
+
+#-------------------------------------
+
+mask <- grepl("15E40", unmatched$Beat)
+unmatched[mask,]$Address  <- str_replace(unmatched[mask,]$Address, 
+                              "S LOOP E FWY", "S LOOP W FWY")
 
 #-------------------------------------
 
