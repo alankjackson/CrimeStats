@@ -15,7 +15,18 @@ TX_dict <- pm_dictionary(type = "state", filter = c("TX"), case = "title", local
 cityDict <- pm_append(type = "city",
                       input = 
                         c("Houston", "Katy", "Pasadena", "Bellaire", 
-                          "HOUSTON", "KATY", "PASADENA", "BELLAIRE"))
+                          "Humble", "Meadows Place", "Sugar Land",
+                          "Missouri City", "Galena Park", "Baytown",
+                          "Deer Park", "Porter", "Huffman", "Friendswood",
+                          "Crosby", "Webster", "Brookside Vl",
+                          "South Houston",
+                          "HOUSTON", "KATY", "PASADENA", "BELLAIRE",
+                          "HUMBLE", "MEADOWS PLACE", "SUGAR LAND",
+                          "MISSOURI CITY", "GALENA PARK", "BAYTOWN",
+                          "DEER PARK", "PORTER", "HUFFMAN", "FRIENDSWOOD",
+                          "CROSBY", "WEBSTER", "BROOKSIDE VL",
+                          "SOUTH HOUSTON"
+                          ))
 
 dirs <- pm_dictionary(type = "directional", filter = c("N", "S", "E", "W"), locale = "us")
 
@@ -38,4 +49,52 @@ df2 <- pm_prep(df, var = "match_address")
 
 ```
 
+## Break address into components
+
+```{r components}
+
+#   All have zip?
+
+pm_postal_all(df2)
+
+#   pull out zip
+
+df2 <- pm_postal_parse(df2)
+
+#   All have state?
+
+pm_state_all(df2)
+
+#   pull out state
+
+df2 <- pm_state_parse(df2)
+
+#   All have city?
+
+pm_city_all(df2, dictionary=cityDict)
+pm_city_none(df2, dictionary=cityDict)
+
+#   pull out city
+
+df2 <- pm_city_parse(df2, dictionary=cityDict)
+
+#   pull out address
+
+pm_house_all(df2)
+df2 <- pm_house_parse(df2)
+
+#   pull out directionals
+
+pm_streetDir_none(df2, dictionary=dirs)
+df2 <- pm_streetDir_parse(df2, dictionary=dirs)
+
+#   pull out street names
+
+df2 <- pm_streetSuf_parse(df2)
+
+#   Normalize
+
+df2 <- pm_street_parse(df2)
+
+```
 
