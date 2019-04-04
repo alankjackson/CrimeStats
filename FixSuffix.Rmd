@@ -1,0 +1,41 @@
+---
+title: "Fix Suffix"
+author: "Alan Jackson"
+date: "April 3, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+library(tidyverse)
+library(postmastr)
+
+TX_dict <- pm_dictionary(type = "state", filter = c("TX"), case = "title", locale = "us")
+
+cityDict <- pm_append(type = "city",
+                      input = 
+                        c("Houston", "Katy", "Pasadena", "Bellaire", 
+                          "HOUSTON", "KATY", "PASADENA", "BELLAIRE"))
+
+dirs <- pm_dictionary(type = "directional", filter = c("N", "S", "E", "W"), locale = "us")
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Read in file, select census addresses, and prep
+
+```{r read in and prep}
+
+df <- readRDS("~/Dropbox/CrimeStats/CensusGeoTable_progress.rds")
+
+df <- df %>% 
+  filter(geocode_status=="census") %>% 
+  select(match_address, Beat)
+
+df <- pm_identify(df, var = "match_address")
+df2 <- pm_prep(df, var = "match_address")
+
+
+```
+
+
