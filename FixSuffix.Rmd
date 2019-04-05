@@ -30,7 +30,67 @@ cityDict <- pm_append(type = "city",
 
 dirs <- pm_dictionary(type = "directional", filter = c("N", "S", "E", "W"), locale = "us")
 
+streetDict <- pm_append(type="street",
+                        input=c("THREE Oaks", "THREE PINES", 
+                                "FOUR PINES", "FOUR RIVERS", 
+                                "FOUR WINDS", "SEVEN MAPLES", 
+                                "SEVEN MILE", "SEVEN OAKS", 
+                                "EIGHT WILLOWS"),
+                        output=c("Three Oaks", "THREE PINES", 
+                                "FOUR PINES", "FOUR RIVERS", 
+                                "FOUR WINDS", "SEVEN MAPLES", 
+                                "SEVEN MILE", "SEVEN OAKS", 
+                                "EIGHT WILLOWS"))
+
 knitr::opts_chunk$set(echo = TRUE)
+```
+
+##  functions for address corrections
+
+```{r define functions}
+
+#     Create dictionary data frame of pattern/replacement
+Makedict <- function(dictionary) {
+  dict <- cbind.data.frame(split(dictionary, rep(1:2, times=length(dictionary)/2)), stringsAsFactors=F)
+  names(dict) <- c("From", "To")
+  return(dict)
+}
+
+#   test the searches first to see what they will find
+testregex <- function(dframe, col, pat) { # input data frame and regex
+  for(i in 1:length(pat[,1])) {
+    print(paste("Pattern: ",pat[i,1]))
+    hits <- unique(dframe[[col]][grepl(pat[i,1],dframe[[col]])])
+    if (length(hits)>0){
+      print(paste("   Result: ", hits))
+    }
+    else {
+      print("No hits")
+    }
+  }
+}
+
+#   apply to input array
+applyregex <- function(dframe, col, pat) {
+  for(i in 1:length(pat[,1])) {
+  dframe[[col]] <- str_replace_all(dframe[[col]],pat[i,1],pat[i,2])
+  }
+  return(dframe)
+}
+
+#   Following is sample of how to apply
+
+#  dictionary <- c(
+#                  " *P*O* BOX\\s\\d* *","",
+#                  " *BOX\\s\\d* *","",
+#                  "P *O BX",""
+#  )
+#  dict <- Makedict(dictionary)
+#  #   test them first
+#  testregex(df2, "Street", dict)
+#  #   Apply
+#  df2 <- applyregex(df2, "Street", dict)
+
 ```
 
 ## Read in file, select census addresses, and prep
@@ -42,6 +102,19 @@ df <- readRDS("~/Dropbox/CrimeStats/CensusGeoTable_progress.rds")
 df <- df %>% 
   filter(geocode_status=="census") %>% 
   select(match_address, Beat)
+
+#   Some corrections to Census names
+
+source("Edit_Census_Addresses.R") # load in address edits
+
+dict <- Makedict(dictionary)
+#   test them first
+testregex(df, "match_address", dict)
+#   Apply
+unmatched <- applyregex(df, "match_address", dict)
+
+
+#   Build new objects
 
 df <- pm_identify(df, var = "match_address")
 df2 <- pm_prep(df, var = "match_address")
@@ -90,11 +163,93 @@ df2 <- pm_streetDir_parse(df2, dictionary=dirs)
 
 #   pull out street names
 
-df2 <- pm_streetSuf_parse(df2)
+df2 <- pm_streetSuf_parse(df2) 
 
 #   Normalize
 
-df2 <- pm_street_parse(df2)
+df2 <- pm_street_parse(df2, dictionary = streetDict)
 
 ```
 
+
+##  build a table for correcting suffixes
+
+```{r build corrections}
+
+df3 <- df2 %>% 
+  mutate(pm.preDir=replace_na(pm.preDir, "")) %>% 
+  mutate(street=str_trim(paste(pm.preDir, pm.street))) %>% 
+  select(street, pm.streetSuf) %>% 
+  mutate(pm.streetSuf=replace_na(pm.streetSuf, "")) %>% 
+  mutate(full_street=str_trim(paste(street, pm.streetSuf))) %>% 
+  distinct() %>% 
+  group_by(street) %>% 
+  add_tally()
+
+#   Build a tibble of unique street suffix names and another
+#   where a street name may have multiple suffixes.
+
+
+
+```
+
+##  Some corrections to input data
+
+```{r}
+
+```
+
+
+```{r reprex}
+
+reprexdata <- tribble(
+  ~address,
+  "5330 THREE OAKS CIR, HOUSTON, TX, 77069",
+  "2040 NASA Road 1, Houston, TX 77058",
+  "3240 THREE PINES DR, HUMBLE, TX, 77339"
+)
+TX_dict <- pm_dictionary(type = "state", filter = "TX", 
+                         case = "title", locale = "us")
+cityDict <- pm_append(type = "city",
+                      input = 
+                        c("Houston", "Katy", "Pasadena", "Bellaire", 
+                          "Humble", "Meadows Place", "Sugar Land",
+                          "HOUSTON", "KATY", "PASADENA", "BELLAIRE",
+                          "HUMBLE", "MEADOWS PLACE", "SUGAR LAND"
+                          ))
+
+dirs <- pm_dictionary(type = "directional", filter = c("N", "S", "E", "W"), locale = "us")
+
+streetDict <- pm_append(type="street",
+                        input=c("3Rd OAKS", "3Rd Pines", 
+                                "FOUR PINES", "FOUR RIVERS", 
+                                "FOUR WINDS", "SEVEN MAPLES", 
+                                "SEVEN MILE", "SEVEN OAKS", 
+                                "EIGHT WILLOWS"),
+                        output=c("Three Oaks", "Three Pines", 
+                                "FOUR PINES", "FOUR RIVERS", 
+                                "FOUR WINDS", "SEVEN MAPLES", 
+                                "SEVEN MILE", "SEVEN OAKS", 
+                                "EIGHT WILLOWS"))
+
+dftest <- pm_identify(reprexdata, var = "address")
+
+dftest <- pm_prep(dftest, var = "address")
+
+dftest <- pm_postal_parse(dftest)
+
+dftest <- pm_state_parse(dftest)
+
+dftest <- pm_city_parse(dftest, dictionary=cityDict)
+
+dftest <- pm_house_parse(dftest)
+
+dftest <- pm_streetDir_parse(dftest, dictionary=dirs)
+
+dftest <- pm_streetSuf_parse(dftest) 
+
+dftest <- pm_street_parse(dftest, dictionary = streetDict)
+
+dftest
+
+```
