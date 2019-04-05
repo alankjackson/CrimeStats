@@ -58,7 +58,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r read month}
 #   set year, month
 yr = "18"
-mon = "jan"
+mon = "may"
 
 infile <- paste0("/home/ajackson/Dropbox/CrimeStats/HPDdata2018/",
                  mon,yr,".xls")
@@ -425,15 +425,6 @@ ggsave(paste("Monthly_",mon,"_",yr,"_IncidentsPerDayPerBeat.jpeg", sep=""), devi
 
 ```
 
-```{r Clean streets}
-
-df2$OldStreet <- df2$Street
-
-library(postmastr)
-
-
-
-```
 
 
 
@@ -542,6 +533,8 @@ dictionary <- c(
                 "FARM TO MARKET", "FM",
                 "NASA RD 1", "NASA ROAD 1",
                 "COUNTY RD",   "CR",
+                "INTERESTATE",   "INTERSTATE",
+                "INTERSATE",   "INTERSTATE",
                 "ST \\d+$",     "ST",
                 "DR \\d+$",     "DR",
                 "RD \\d+$",     "RD",
@@ -577,6 +570,7 @@ dictionary <- c(
                 "^BLK ", "",
                 "^ ", "",
                 " STRE$", "",
+                "GRANDP", "GRAND P",
                 "SPEEDWAY",        "SPDWY",
                 " LANE \\d*$",  " LN",
                 "FREEWAY$",      "FWY",
@@ -632,8 +626,34 @@ tail(head(sort(unique(df2$Street)),100),100)
 
 dictionary <- c(
   "^14022",     "",
+  "^2$",     "2ND",
+  "^12355",     "",
+  "^1Q01 ADLA",     "AVENIDA DE LAS AMERICAS",
+  "^2501A ",     "",
+  "^998B ",     "",
+  "ACCESS SAN JACINTO C",     "SAN JACINTO COLLEGE",
+  " AT MARGARET",     "",
+  "^1733B ",     "",
+  "^2261A ",     "",
+  "^4411B ",     "",
+  "^1011A ",     "",
   "^1611",     "",
+  "^131",     "",
+  "AIIRP",     "AIRP",
+  " 162$",     "",
+  " 3946$",     "",
+  " APT E 8$",     "",
+  "19 ST",     "19TH ST",
+  "40 1",     "",
+  "406B ",     "",
+  "4234A ",     "",
+  "6827",     "",
+  "801",     "",
+  "74OO ",     "",
+  "633RUSHCREEKDRAPT812",     "RUSHCREEK DR",
+  " SUITE A 1",     "",
   " NW$",     "",
+  " ST A$",     " ST",
   " AVE NORTH$",     " AVE",
   " SPACE 1$", "",
   "^5001B ", "",
@@ -642,6 +662,7 @@ dictionary <- c(
   " ROUTE$", " RT",
   " EXIT ", " ",
   " @ .*$", "",
+  "@ .*$", "",
   "^A ", " ",
   " [IO]B ", " ",
   " [IO]B$", " "
@@ -657,13 +678,19 @@ tail(head(sort(unique(df2$Street)),200),100)
 dictionary <- c(
   "AMTELOPE", "ANTELOPE",
   "ANTIONE", "ANTOINE",
+  "AVEN LAQUINTA", "AVENIDA LA QUINTA",
+  "ATTN REGION V P", "",
+  "ANYWHERE HOUSTON", "",
   "^AVENUE ", "AVE ",
-  "AMERI$", "AMERICA",
+  "^AN ", "",
+  "AMERI$", "AMERICAS",
+  "AMERICA$", "AMERICAS",
   " TRAILER$", "",
   "14095A ", "",
   "326C ", "",
   "828A ", "",
-  " A$", "",
+  "KINNEY A$", "KINNEY",
+  "DRIVE A$", "DRIVE",
   " @ GILLETTE ST", "",
   " UT @ GULF FWY", "",
   "5341", "",
@@ -681,8 +708,12 @@ tail(head(sort(unique(df2$Street)),300),100)
 dictionary <- c(
                 "BANTAN", "BANTAM",
                 " D$", "",
+                " APT J$", "",
+                "^ ", "",
                 "BARTEL$", "BARTELL",
                 " 4205$", "",
+                " IBOB$", "",
+                " 303$", "",
                 " 2004", ""
 )
 dict <- Makedict(dictionary)
@@ -694,6 +725,8 @@ tail(head(sort(unique(df2$Street)),300),100)
 
 tail(head(sort(unique(df2$Street)),400),100)
 dictionary <- c(
+  "^B ", "",
+  " OBI$", "",
   " 58", ""
 )
 dict <- Makedict(dictionary)
@@ -707,6 +740,9 @@ tail(head(sort(unique(df2$Street)),500),100)
 dictionary <- c(
   "DRIVE G$", "DR",
   "WODD", "WOOD",
+  " IBOB", "",
+  " 1206", "",
+  " AT FULTON", "",
   " TALKINGTON HA$", "",
   " 121", ""
 )
@@ -721,6 +757,7 @@ tail(head(sort(unique(df2$Street)),600),100)
 
 dictionary <- c(
                 " 702", "",
+                " SPEEDWY 812", "SPDWY",
                 "WREN LOOP", "WREN LP",
                 "TAUB LOOP", "TAUB LP"
 )
@@ -735,6 +772,8 @@ tail(head(sort(unique(df2$Street)),600),100)
 tail(head(sort(unique(df2$Street)),700),100)
 dictionary <- c(
   " 307", "",
+  " 102", "",
+  " \\(NBC TOWER\\)", "",
   "T3ER", "TER",
   " G023", "",
   " 702", ""
@@ -749,6 +788,8 @@ tail(head(sort(unique(df2$Street)),700),100)
 
 tail(head(sort(unique(df2$Street)),800),100)
 dictionary <- c(
+  " AND WARD", "",
+  "CR4097", "CR 4097",
   "^ COOL WOOD", "COOLWOOD"
 )
 dict <- Makedict(dictionary)
@@ -763,7 +804,7 @@ tail(head(sort(unique(df2$Street)),900),100)
 dictionary <- c(
   "COVENTRY SQ$", "COVENTRY SQUARE",
   "CR132", "CR 132",
-  " F$", "",
+  " ST3317", "",
   "ASHFD 6305", "ASHFORD"
 )
 dict <- Makedict(dictionary)
@@ -776,6 +817,8 @@ tail(head(sort(unique(df2$Street)),900),100)
 tail(head(sort(unique(df2$Street)),1000),100)
 dictionary <- c(
   " 311A", "",
+  " ENTR", "",
+  "@ TIDWELL", "",
   "^D NAV", "NAV"
 )
 dict <- Makedict(dictionary)
@@ -788,8 +831,12 @@ tail(head(sort(unique(df2$Street)),1000),100)
 tail(head(sort(unique(df2$Street)),1100),100)
 dictionary <- c(
   " 567", "",
+  " AND LOCKWOOD DR", "",
+  "E TC ", "E T C ",
+  "E FWY", "EAST FWY",
   "E IH 10 FWY", "EAST FWY",
   " UTRN", "",
+  " 412", "",
   " IBOB", ""
 )
 dict <- Makedict(dictionary)
@@ -803,6 +850,9 @@ tail(head(sort(unique(df2$Street)),1100),100)
 tail(head(sort(unique(df2$Street)),1200),100)
 dictionary <- c(
   " 922", "",
+  " SER$", "",
+  "FM2218", "FM 2218",
+  " ROAD 116", " RD",
   " BLG C", "",
   " OST ", " OLD SPANISH TRL "
 )
@@ -816,6 +866,8 @@ tail(head(sort(unique(df2$Street)),1200),100)
 
 tail(head(sort(unique(df2$Street)),1300),100)
 dictionary <- c(
+  "^G$", "AVENUE G",
+  "^FWY$", "NORTH FWY",
   "^FM$", "FM 20"
 )
 dict <- Makedict(dictionary)
@@ -844,8 +896,11 @@ tail(head(sort(unique(df2$Street)),1400),100)
 tail(head(sort(unique(df2$Street)),1500),100)
 dictionary <- c(
   " A 4$", "",
+  " OB/34TH ST", "",
+  "^N IH 45 FWY", "NORTH FWY",
   " 125$", "",
   " 20$", "",
+  " 2306$", "",
   " APT E$", "",
   " 4$", ""
 )
@@ -860,7 +915,11 @@ tail(head(sort(unique(df2$Street)),1500),100)
 tail(head(sort(unique(df2$Street)),1600),100)
 dictionary <- c(
   " 2ND FLOOR", "",
+  " SUTIE E", "",
   " TRL B 6", "",
+  "I 45 N", "NORTH FWY",
+  " 01 11", "",
+  "^N$", "NORTH",
   "CIR 3024$", "CIRCLE"
 )
 dict <- Makedict(dictionary)
@@ -874,6 +933,10 @@ tail(head(sort(unique(df2$Street)),1600),100)
 tail(head(sort(unique(df2$Street)),1700),100)
 dictionary <- c(
   "^I45$", "GULF FWY",
+  " 201$", "",
+  " 230$", "",
+  " 1220$", "",
+  " VLY", " VALLEY",
   " ANYHERE HOUSTON", "",
   "W IH 10", "KATY",
   "^IH 45 NORTH$", "NORTH FWY",
@@ -890,6 +953,7 @@ tail(head(sort(unique(df2$Street)),1700),100)
 tail(head(sort(unique(df2$Street)),1800),100)
 dictionary <- c(
   "VLG", "BLVD",
+  "TOLL RD", "FWY",
   "^JFK", "JOHN F KENNEDY",
   " VLY ", " VALLEY ",
   "^K ", ""
@@ -904,6 +968,9 @@ tail(head(sort(unique(df2$Street)),1800),100)
 
 tail(head(sort(unique(df2$Street)),1900),100)
 dictionary <- c(
+  " APT CD 1019",   "",
+  "SH288IB MACGREGOR WAY N",   "SH 288",
+  " C147",   ""
 )
 dict <- Makedict(dictionary)
 #   test them first
@@ -928,6 +995,8 @@ tail(head(sort(unique(df2$Street)),2000),100)
 
 tail(head(sort(unique(df2$Street)),2100),100)
 dictionary <- c(
+  " TERMINAL RAMP$", "",
+  "DR B$", "DR"
 )
 dict <- Makedict(dictionary)
 #   test them first
@@ -940,6 +1009,10 @@ tail(head(sort(unique(df2$Street)),2100),100)
 tail(head(sort(unique(df2$Street)),2200),100)
 dictionary <- c(
   " 7$", "",
+  "MUSTANG INN GARDEN INN CITGO ", "",
+  "H 410$", "H",
+  "^N$", "NORTH",
+  "^M ", "",
   "^MCH$", ""
 )
 dict <- Makedict(dictionary)
@@ -968,6 +1041,13 @@ dictionary <- c(
   "N IH 610", "N LOOP",
   "N US 59", "EASTEX",
   " 120$", "",
+  "^OST$", "OLD SPANISH TRL",
+  "^O S T$", "OLD SPANISH TRL",
+  "^OLD SPANISH$", "OLD SPANISH TRL",
+  " F 1$", "",
+  "WILDINDIGO", "WILD INDIGO",
+  " ST B$", " ST",
+  " CO 01 35$", "",
   " SERVICE RD", ""
 )
 dict <- Makedict(dictionary)
@@ -982,6 +1062,7 @@ tail(head(sort(unique(df2$Street)),2500),100)
 dictionary <- c(
   " IB/5718 BLK", " @",
   " PMB", "",
+  "PO COX 440455", "",
   "OLDKATY", "OLD KATY",
   "OB/", "@ ",
   " @.*$", ""
@@ -997,6 +1078,7 @@ tail(head(sort(unique(df2$Street)),2500),100)
 tail(head(sort(unique(df2$Street)),2600),100)
 dictionary <- c(
   " FCT175042", "",
+  " 1301", "",
   "CIRC$", "CIRCLE"
 )
 dict <- Makedict(dictionary)
@@ -1020,6 +1102,8 @@ tail(head(sort(unique(df2$Street)),2700),100)
 
 tail(head(sort(unique(df2$Street)),2800),100)
 dictionary <- c(
+  "SAMHOUPKWY S 315", "SAM HOUSTON PKWY S",
+  "SAM HTN PWY S 515", "SAM HOUSTON PKWY S",
   " 1209$", ""
 )
 dict <- Makedict(dictionary)
@@ -1037,6 +1121,8 @@ dictionary <- c(
   "SAM HOUSTON E$", "SAM HOUSTON PKWY E",
   "SAM HOUSTON W$", "SAM HOUSTON PKWY W",
   "PKWY SOUTH$", "PKWY",
+  " $", "",
+  " 415$", "",
   "SAME HOUSTON", "SAM HOUSTON",
   "SAM HOUSTON$", "SAM HOUSTON PKWY"
 )
@@ -1051,6 +1137,7 @@ tail(head(sort(unique(df2$Street)),2900),100)
 tail(head(sort(unique(df2$Street)),3000),100)
 dictionary <- c(
   "SH146", "SH 146",
+  " 201$", "",
   "S IH 45 FWY", "GULF FWY",
   "S IH 610 FWY", "S LOOP FWY",
   " D11$", ""
@@ -1065,6 +1152,8 @@ tail(head(sort(unique(df2$Street)),3000),100)
 
 tail(head(sort(unique(df2$Street)),3100),100)
 dictionary <- c(
+  "29THST", "29TH ST",
+  " CV$", "",
   "SOUTHBRAESWOOD", "SOUTH BRAESWOOD",
   "LOOP LOOP", "LOOP"
 )
@@ -1080,6 +1169,9 @@ tail(head(sort(unique(df2$Street)),3200),100)
 dictionary <- c(
   "SW FWY", "SOUTHWEST FWY",
   " MATTRESS FIRM", "",
+  " LP LOOP", " LP",
+  "^TC ", "T C ",
+  " BLVB", " BLVD",
   "^ST ST$", "SAINT ST",
   "SW FREEWAY 45", "SOUTHWEST FWY"
 )
@@ -1094,6 +1186,7 @@ tail(head(sort(unique(df2$Street)),3200),100)
 tail(head(sort(unique(df2$Street)),3300),100)
 dictionary <- c(
   "^TC ", "T C ",
+  "TH 1$", "TH",
   " \\& ", " AND "
 )
 dict <- Makedict(dictionary)
@@ -1109,7 +1202,7 @@ dictionary <- c(
   "TIMBERCRK PL", "TIMBER CREEK PLACE",
   "APT 2112", "",
   " 5$", "",
-  "US 59", "EASTEX",
+  "WESTGULFBANK", "WEST GULF BANK",
   "TOMABLL", "TOMBALL",
   " 1$", "",
   "^U S ", "US "
@@ -1124,6 +1217,9 @@ tail(head(sort(unique(df2$Street)),3400),100)
 
 tail(head(sort(unique(df2$Street)),3500),100)
 dictionary <- c(
+  " AND 10000 BEECHNUT$", "",
+  " 511$", "",
+  " BYP$", "",
   " APT C$", ""
 )
 dict <- Makedict(dictionary)
@@ -1227,6 +1323,7 @@ dictionary <- c(
                 "^EAST ([A,C-E,G-K,MR,T-Z])",       "E \\1",
                 "^WEST ([A,C-E,G-K,MR,T-Z])",       "W \\1",
                 "HWY 6$",        "SH 6",
+                " N244$",        "",
                 "BW 8 FWY", "S SAM HOUSTON PKWY",
                 "BW 8", "S SAM HOUSTON PKWY",
                 "^HWY 3$", "OLD GALVESTON RD",
@@ -1242,7 +1339,6 @@ df2 <- applyregex(df2, "Street", dict)
 
 keepdf2 <- df2
 
-####################   stopped here 16 April
 #####    work on highways separately
 #   Goals:
 #  EASTEX FWY, GULF FWY, KATY FWY, NORTH FWY, NORTHWEST FWY,
@@ -1276,10 +1372,10 @@ df2$Street[maskloop] <- str_replace(df2$Street[maskloop], "EAST$","E")
 df2$Street[maskloop] <- str_replace(df2$Street[maskloop], "WEST$","W")
 df2$Street[maskloop] <- str_replace(df2$Street[maskloop], "NORTH$","N")
 df2$Street[maskloop] <- str_replace(df2$Street[maskloop], "SOUTH$","S")
-df2$Street[maskloop] <- str_replace(df2$Street[maskloop], " E$","")
-df2$Street[maskloop] <- str_replace(df2$Street[maskloop], " W$","")
-df2$Street[maskloop] <- str_replace(df2$Street[maskloop], " N$","")
-df2$Street[maskloop] <- str_replace(df2$Street[maskloop], " S$","")
+#df2$Street[maskloop] <- str_replace(df2$Street[maskloop], " E$","")
+#df2$Street[maskloop] <- str_replace(df2$Street[maskloop], " W$","")
+#df2$Street[maskloop] <- str_replace(df2$Street[maskloop], " N$","")
+#df2$Street[maskloop] <- str_replace(df2$Street[maskloop], " S$","")
 df2$Street[maskloop] <- str_replace(df2$Street[maskloop], "^EAST ","E ")
 df2$Street[maskloop] <- str_replace(df2$Street[maskloop], "^WEST ","W ")
 df2$Street[maskloop] <- str_replace(df2$Street[maskloop], "^NORTH ","N ")
@@ -1492,7 +1588,6 @@ df2$Street[maskstreet] <- "CROSBY FWY"
 ###############   add these as needed ###################
 
 
-###############   stopped here
 #############   done with freeways
 
 keepdf2 <- df2
@@ -1503,9 +1598,11 @@ dictionary <- c(
                 "CENT3ER", "CENTER",
                 "GREEN TEE", "GREEN TREE",
                 "HW 6", "TEXAS 6",
+                "NORTH SAM HOUSTON PARKWAY EAST", "N SAM HOUSTON PKWY E",
                 "KING JR$", "KING",
                 "TRL FWY", "TRL",
                 "PMB", "TRL",
+                " 1010$", "",
                 "PEBBLE DOWNE", "PEBBLEDOWNE",
                 " PRK", " PARK",
                 "PW FUQWAY", "W FUQUA",
