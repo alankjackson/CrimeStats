@@ -1,0 +1,45 @@
+---
+title: "Fix Issues In Final geocoding"
+author: "Alan Jackson"
+date: "April 5, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+library(tidyverse)
+
+database <- readRDS("~/Dropbox/CrimeStats/CensusGeoTable_progress.rds")
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Locations mis-identified in wrong city
+
+Most of the South Houston addresses (but not all) should be Houston
+Similarly for Bellaire.
+
+Houston police respond to crimes where they are when they see them, so
+there are reports that are not in the city. The Beat refers to the office
+that the person filing the report works out of, not the beat where the
+offense occurred.
+
+For matches outside the city, flag in the status field as "out of city"
+
+```{r flag out of city}
+
+# Bellaire
+
+mask <- grepl("BELLAIRE, TX", database$match_address, ignore.case = TRUE)
+database[mask,]$status    <- "out of city"
+
+# South Houston
+
+#  This is complicated by the fact that the geocoders mistakingly
+#  placed some Houston addresses in South Houston
+
+
+
+
+```
+
