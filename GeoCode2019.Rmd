@@ -22,7 +22,7 @@ register_google(key = apikey)
 HoustonBdy <- c(-95.789963, 29.518566, -95.005814, 30.117875)
 BoundBox <- "bounds=29.518566,-95.789963|30.117875,-95.005814"
 
-district <- "15e"
+district <- "16e"
 reclean <- c(paste0("District",district,"ReCleanData.rds"))
 recleanpath <- "~/Dropbox/CrimeStats/"
 
@@ -637,7 +637,7 @@ samWS <- c("19G10", "19G20", "19G30", "19G40", "19G50", "20G10", "20G20", "20G30
 samWN <- c("20G50", "20G60", "5F30", "4F10", "4F20", "4F30")
 
 samSE <- c("14D50", "13D40", "12D20")
-samSW <- c("17E30", "16E30", "16E40", "17E4", "17E40")
+samSW <- c("17E30", "16E30", "16E40", "17E4", "17E40", "16E20")
 
 samES <- c("12D30", "12D40", "11H40", "9C40")
 samEN <- c("24C60", "8C50")
@@ -827,7 +827,7 @@ special <- tribble(
 
 # Skip these, census won't get them, this will speed things up
 
-skips <- c("S HEIGHTS", "FWY", "HOMELESS", "PO BOX", "POBOX","TOMBALL", "HEMPSTEAD", "POST OAK", "1960", "WILCREST", " SAM ", "HONEYWELL", "BELLFORT", "AVENUE" )
+skips <- c("S HEIGHTS", "FWY", "HOMELESS", "PO BOX", "POBOX","TOMBALL", "HEMPSTEAD", "POST OAK", "1960", "WILCREST", " SAM ", "HONEYWELL", "AVENUE" )
 
 onlys <- c(" LOOP ", " BELLFORT ")
 
@@ -1098,15 +1098,15 @@ unmatched <- applyregex(unmatched, "Address", dict)
 #    special cases - digits replace last 2 on address
 special <- tribble(
   ~match, ~addr,
-  "MCKNIGHT",      "22",
-  "POINTE",         "66"
+  "BOONRIDGE",      "02",
+  "KARALAS",         "00"
 )
 
 # Skip these, won't get them, this will speed things up
 
 skips <- c("HOMELESS", "PO BOX", "POBOX", "ENTRANCE", "P O BOX")
 
-onlys <- c(" BRAESWOOD ", "MCKNIGHT", "KEELY")
+onlys <- c("INWOOD", "OREM")
 
 ##########################################
 ##    next spin through data geocoding
@@ -1129,7 +1129,7 @@ for (i in begin:nrow(unmatched)) {
     # only do selected cases
     if (!any(str_detect(unmatched[i,]$Address, onlys))){next()}
     # skip distance <10 cases
-    if (unmatched[i,]$status=="Distance = 0"){next()}
+    #if (unmatched[i,]$status=="Distance = 0"){next()}
     # skip GEOMETRIC_CENTER cases
     #if(!is.na(unmatched[i,]$GType) &
     #    unmatched[i,]$GType == "GEOMETRIC_CENTER route") {next()}
@@ -1271,12 +1271,14 @@ NSamE <- Fwy_interpolate(previous_match, unmatched, "N SAM HOUSTON PKWY E", 650,
 SSamE <- Fwy_interpolate(previous_match, unmatched, "S SAM HOUSTON PKWY E", 3550, 6450)
 SSamE2 <- Fwy_interpolate(previous_match, unmatched, "S SAM HOUSTON PKWY E", 9250, 12450)
 ESamS <- Fwy_interpolate(previous_match, unmatched, "EAST SAM HOUSTON PKWY S", 5450, 7950)
+SSamW <- Fwy_interpolate(previous_match, unmatched, "S SAM HOUSTON PKWY W", 5450, 9150)
+SSamW2 <- Fwy_interpolate(previous_match, unmatched, "S SAM HOUSTON PKWY W", 3550, 5450)
 Gulf <- Fwy_interpolate(previous_match, unmatched, "GULF FWY", 550, 19550)
 Blackhawk <- Fwy_interpolate(previous_match, unmatched, "BLACKHAWK BLVD", 8450, 9850)
 Evergreen <- Fwy_interpolate(previous_match, unmatched, "VILLAGE EVERGREEN TRAIL", 14550, 9850)
 
 #generated <- bind_rows(katy, northfwy, eastex, NSamE) 
-generated <- bind_rows(generated, SSamE2) 
+generated <- bind_rows(generated, SSamW2) 
 
 #---------------------------------------
 #   E LOOP FWY is special
