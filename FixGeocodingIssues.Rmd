@@ -28,18 +28,201 @@ For matches outside the city, flag in the status field as "out of city"
 
 ```{r flag out of city}
 
+set_redo <- function(df, mask) {
+  df[mask,]$lat <- NA
+  df[mask,]$long <- NA
+  df[mask,]$status <- "fail"
+  df[mask,]$geocode_status <- "redo" # redo with match_address
+  return(df)
+}
+
+# address of form [0-9]+ [NSEW] name suffix , city, state, zip, USA
+gethouse <- function(address) {
+  x <- unlist(strsplit(unlist(address), " "))
+  house_number <- as.numeric(trimws(x[1]))
+  return(house_number)
+}
+#####################################***  run this
 # Bellaire
+#####################################
 
-mask <- grepl("BELLAIRE, TX", database$match_address, ignore.case = TRUE)
+mask1 <- grepl("BELLAIRE, TX", database$match_address, ignore.case = TRUE)
+database[mask1,]$status    <- "out of city"
+mask2 <- grepl("1A|17E|15E|18F", database$Beat, ignore.case = TRUE)
+mask <- mask1&mask2
+database[mask1,]$status    <- "success"
+
+#####################################
+# Baytown
+#####################################
+#  Main St should really be in Galena Park based on Beat
+mask1<- grepl("Baytown, TX", database$match_address, ignore.case = TRUE)
+mask2 <- grepl("success", database$status, ignore.case = TRUE)
+mask3 <- grepl("s main st", database$match_address, ignore.case = TRUE)
+mask <- mask1&mask2&!mask3 # S Main is only HPD address in Baytown
 database[mask,]$status    <- "out of city"
+mask <- mask1&mask2&mask3 # S Main is only HPD address in Baytown
+database[mask,]$match_address    <- str_replace(
+                                    database[mask,]$match_address,
+                                    "BAYTOWN, TX, 77520",
+                                    "GALENA PARK, TX")
+database <- set_redo(database, mask)
 
+#####################################
 # South Houston
+#####################################
 
 #  This is complicated by the fact that the geocoders mistakingly
 #  placed some Houston addresses in South Houston
+#  For those addresses, zero out the lat/long and set up for a
+#  geocoding redo
+
+mask1 <- grepl("South Houston, TX", database$match_address, ignore.case = TRUE)
+
+    #  12th > 799, = W 12th
+    #  13th > 799, = W 13th
+    #  15th > 699, = W 15th
+    #  16th > 1099, = W 16th
+    #  4th > 699, = W 4th
+    #  7th > 1099, = W 7th
+    #  11th > 1099, = W 11th
+    #  Dallas with Beat=1A20 = W Dallas
+
+addwest <- function(database, mask, street, number) {
+  mask2 <- grepl(street, database$match_address, ignore.case = TRUE)
+  mask3 <- as.numeric(str_extract(database$match_address, "\\d+"))>number
+  mask3[is.na(mask3)] <- FALSE
+  mask <- mask1&mask2&mask3 
+  print(sum(mask))
+  if (sum(mask) > 0) {
+    database[mask,]$Address <- str_replace(database[mask,]$Address,
+                                           street,
+                                           paste("W", street))
+    database[mask,]$geocode_status <- "pending"
+  }
+  mask <- mask1&mask2&!mask3 
+  if (sum(mask) > 0) {
+    database[mask,]$status    <- "unknown"
+  }
+  return(database)
+}
+
+database <- addwest(database, mask, "12TH ST", 799)
+database <- addwest(database, mask, "13TH ST", 799)
+database <- addwest(database, mask, "15TH ST", 699)
+database <- addwest(database, mask, "16TH ST", 1099)
+database <- addwest(database, mask, "4TH ST", 699)
+database <- addwest(database, mask, "7TH ST", 1099)
+database <- addwest(database, mask, "11TH ST", 1099)
+
+mask2 <- grepl("Dallas St", database$match_address, ignore.case = TRUE)
+mask3 <- grepl("1A20", database$Beat, ignore.case = TRUE)
+mask <- mask1&mask2 # retry
+database[mask,]$status    <- "fail"
+database[mask,]$status    <- "unresolvable" #second time through
+
+database[mask,]$geocode_status    <- "fail"
+mask <- mask1&mask2&mask3 # make W Dallas
+database[mask,]$Address    <- str_replace(
+                                    database[mask,]$Address,
+                                    "9 DALLAS",
+                                    "9 W DALLAS")
+
+mask2 <- grepl("success", database$status, ignore.case = TRUE)
+mask3 <- grepl("pending", database$geocode_status, ignore.case = TRUE)
+mask <- mask1&mask2&!mask3 # set the rest to "out of city"
+database[mask,]$status    <- "out of city"
+
+#############   end of South Houston
+
+#####################################
+# Pasadena
+#####################################
+
+# Beats 11H, 9C, and 12D border Pasadena, so these are probably legitimate
+
+mask1 <- grepl("Pasadena, TX", database$match_address, ignore.case = TRUE)
+mask2 <- grepl("11H|9C|12D", database$Beat, ignore.case = TRUE)
+mask <- mask1&!mask2
+database[mask,]$status    <- "out of city"
+
+#####################################
+# Deer Park
+#####################################
+
+mask1 <- grepl("Deer Park, TX", database$match_address, ignore.case = TRUE)
+database[mask1,]$status    <- "out of city"
+
+#####################################
+# Porter
+#####################################
+
+mask1 <- grepl("Porter, TX", database$match_address, ignore.case = TRUE)
+database[mask1,]$status    <- "out of city"
+
+#####################################
+# Sugarland
+#####################################
+
+# Big one here is mispositioned Hwy-6, which needs extensive rework
+# Rename to N Texas 6 and S Texas 6 based on beat
+
+mask1 <- grepl("HWY 6", database$Address, ignore.case = TRUE)
+sum(mask1)
+mask2 <- grepl("20G|19G30", database$Beat, ignore.case = TRUE)
+mask <- mask1&mask2
+sum(mask)
+database[mask,]$Address    <- str_replace(
+                                    database[mask,]$Address,
+                                    "HWY 6",
+                                    "S TEXAS 6")
+database[mask,]$status    <- "fail"
+database[mask,]$geocode_status    <- "fail"
+mask2 <- grepl("4F30", database$Beat, ignore.case = TRUE)
+mask <- mask1&mask2
+sum(mask)
+database[mask,]$Address    <- str_replace(
+                                    database[mask,]$Address,
+                                    "HWY 6 N*\\s*",
+                                    "N TEXAS 6")
+database[mask,]$status    <- "fail"
+database[mask,]$geocode_status    <- "fail"
+
+#   Airport Blvd
+
+mask1 <- grepl("W AIRPORT BLVD", database$Address, ignore.case = TRUE)
+sum(mask1)
+mask2 <- grepl("16E10|15E40|14D|13D|12D", database$Beat, ignore.case = TRUE)
+mask <- mask1&mask2
+sum(mask)
+database[mask,]$Address    <- str_replace(
+                                    database[mask,]$Address,
+                                    "W AIRPORT BLVD",
+                                    "AIRPORT BLVD")
+database[mask,]$status    <- "fail"
+database[mask,]$geocode_status    <- "fail"
+
+#####################################
+# Brookside Village
+#####################################
+
+mask1 <- grepl("BROOKSIDE VL, TX", database$match_address, ignore.case = TRUE)
+database[mask1,]$status    <- "out of city"
+
+
+
 
 
 
 
 ```
+
+##    Save off to file
+
+```{r save}
+
+saveRDS(database, "~/Dropbox/CrimeStats/CensusGeoTable_progress.rds")
+
+```
+
 
