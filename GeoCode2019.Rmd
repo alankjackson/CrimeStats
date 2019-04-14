@@ -226,6 +226,13 @@ getaddress <- function(address) {
 }
 
 # address of form [0-9]+-[0-9]+ [NSEW] name suffix , city, state, zip, USA
+getnumber <- function(address) { # get first number
+  x <- unlist(strsplit(unlist(address), ","))
+  number <- trimws(sub("^[0-9]+", "", x[1]))
+  return(number)
+}
+
+# address of form [0-9]+-[0-9]+ [NSEW] name suffix , city, state, zip, USA
 getoldstreet <- function(address) {
   x <- unlist(strsplit(unlist(address), ","))
   street <- trimws(sub("^[0-9]+-[0-9]+", "", x[1]))
@@ -274,6 +281,8 @@ df <- df %>%
     grepl("^UNK", Block_Range) ~ "not possible",
     grepl(" NA ", Address)     ~ "not possible",
     grepl("^UNK ", Address)    ~ "not possible",
+    grepl("HOMELESS", Address)    ~ "not possible",
+    grepl("P\\s?O\\s?BOX", Address)    ~ "not possible",
     TRUE                       ~ "pending"
       )
     )
@@ -312,11 +321,25 @@ unmatched <-
 unmatched <- unmatched %>% select(Address:newstreet, RawAddress)
 ```
 
+##  start here to reprocess old file
+
+```{r read in complete file to reprocess}
+
+unmatched <- readRDS("~/Dropbox/CrimeStats/CensusGeoTable_progress.rds")
+unmatched <- unmatched %>%
+  arrange(-n) # focus on most important first
+```
+
+
 ###   did match previously succeed?
 
 ```{r check for previous hits}
 
-previous_match <- readRDS( "~/Dropbox/CrimeStats/CensusGeoTable_progress.rds")
+#previous_match <- readRDS( "~/Dropbox/CrimeStats/CensusGeoTable_progress.rds")
+permitdb <- readRDS( "~/Dropbox/CrimeStats/PermitDB_Geocode.rds")
+permitdb <- permitdb %>% 
+  mutate(Beat="UNK",n=1, geocode_status="permitdb", status="success")
+
 generated <- readRDS( "~/Dropbox/CrimeStats/Generated_Coordinates.rds")
 #   somehow I lost a space
 #generated <- generated %>% 
@@ -430,7 +453,7 @@ special_case <- function(mydf, mask, address, lat, long){
     print(paste(sum(mask), "records changed"))
     mydf[mask,]$match_address <- address
     mydf[mask,]$status    <- "success"
-    mydf[mask,]$geocode_status    <- "google"
+    mydf[mask,]$geocode_status    <- "manual"
     mydf[mask,]$lat    <- lat
     mydf[mask,]$long   <- long
     mydf[mask,]$GType    <- "RANGE_INTERPOLATED manual"
@@ -615,7 +638,72 @@ unmatched <- special_case(unmatched,
                  29.946008, 
                  -95.410633)
 
+mask <- grepl("BAYBROOK MALL", unmatched$Address) &
+        grepl("fail", unmatched$geocode_status)
+unmatched <- special_case(unmatched, 
+                 mask, 
+                 "300 Baybrook Mall, Friendswood, TX 77546", 
+                 29.54265, 
+                 -95.15321)
 
+
+#   Specific road spots
+
+specific <- tribble(
+  ~block, ~street, ~number, ~lat, ~long, ~zip,
+  "900-999", "Skyline Vista", "930", 29.759302, -95.377399, "Houston, TX 77019",
+  "0-99", "N SAN JACINTO ST", "30", 29.762918, -95.357548, "Houston, TX 77002",
+  "1100-1199", "W OREM DR", "1250", 29.627650, -95.387823, "Houston, TX 77047",
+  "1100-1199", "ENTRANCE", "6604 Arnot", 29.769932, -95.429635, "Houston, TX 77007",
+  "200-299", "KATY FWY", "250", 29.777888, -95.372539, "Houston, TX 77007",
+"2100-2199", "KATY FWY", "2150", 29.778031, -95.379982, "Houston, TX 77007",
+"1900-1999", "KATY FWY", "1950", 29.779203, -95.375940, "Houston, TX 77007",
+"2000-2099", "PRESSLER ST", "2050", 29.704626, -95.407318, "Houston, TX 77030",
+"1400-1499", "PRESSLER ST", "1450", 29.704416, -95.396160, "Houston, TX 77030",
+"26000-26099", "EASTEX FWY", "26050", 30.071838, -95.245656, "Porter, TX 77365", 
+"3400-3499", "BARKER-CLODINE RD", "3425", 29.734172, -95.688014, "Houston, TX, 77094",
+"14700-14799", "WOODSON PARK DR", "14700", 29.931124, -95.203876,"Houston, TX 77044",
+"14600-14699", "VILLAGE EVERGREEN TRAIL", "14650", 29.576914, -95.151576, "Houston, TX 77062",
+"14700-14799", "VILLAGE EVERGREEN TRAIL", "14750", 29.575495, -95.150133, "Houston, TX 77062",
+"14800-14899", "VILLAGE EVERGREEN TRAIL", "14850", 29.574021, -95.149039, "Houston, TX 77062",
+"4300-4399", "WOODLAND HILLS DR", "4350", 30.075192, -95.213783, "Kingwood, TX 77339",
+"2800-2899", "VICTORY DR", "2801", 29.870550, -95.452790, "Houston, TX 77088",
+"2400-2499", "WALKER ST", "2400", 29.750399, -95.352220, "Houston, TX 77003",
+"18400-18499", "GATEBROOK DR", "18400", 29.555526, -95.150419, "Webster, TX 77598",
+"18300-18399", "GATEBROOK DR", "18350", 29.555826, -95.150728, "Webster, TX 77598",
+"10700-10799", "ELLA BLVD", "10755", 29.939246, -95.432656, "Houston, TX 77067",
+"7800-7899", "MORLEY ST", "7850", 29.661369, -95.277006, "Houston, TX 77061",
+"4400-4499", "NORTHPARK DR", "4450", 30.070439, -95.181017, "Kingwood, TX 77345",
+"2200-2299", "SOUTH FWY", "2250", 29.742508, -95.364159, "Houston, TX 77003",
+"4800-4899", "GLORY LAND", "4850", 29.677277, -95.351772, "Houston, TX 77033",
+"4900-4999", "GLORY LAND", "4950", 29.676764, -95.350023, "Houston, TX 77033",
+"7000-7099", "NORTHWEST DR", "7050", 29.847370, -95.496132, "Houston, TX 77092",
+"7200-7299", "NORTHWEST DR", "7250", 29.849742, -95.499234, "Houston, TX 77092",
+"14100-14199", "SPACE CENTER BLVD", "14150", 29.591602, -95.137589, "Houston, TX 77062",
+"9700-9799", "CLEARWOOD DR", "9750", 29.627978, -95.248547, "Houston, TX 77075",
+"5500-5599", "TIDWELL ESTATES LANE", "5550", 29.846497, -95.432640, "Houston, TX 77091",
+"1600-1699", "ZOO CIRCLE DR", "1650", 29.715758, -95.389866, "Houston, TX 77030",
+"3700-3799", "SOUTHWEST FWY", "3797", 29.728644, -95.437044, "Houston, TX 77027",
+"100-199", "GULF FWY", "150", 29.761877, -95.372678, "Houston, TX 77002",
+"200-299", "GULF FWY", "250", 29.761063, -95.373299, "Houston, TX 77002",
+"300-399", "GULF FWY", "350", 29.759926, -95.373776, "Houston, TX 77002",
+"3600-3699", "W BELLFORT AVE", "3650", 29.672850, -95.435746, "Houston, TX 77025",
+"9500-9599", "ROWLETT RD", "9550", 29.631819, -95.234351, "Houston, TX 77075"
+)
+
+for (i in 1:nrow(specific)) {
+  mask <- grepl(paste(specific[i,]$block, specific[i,]$street), 
+                unmatched$Address, ignore.case=TRUE)
+  print(paste(specific[i,]$street, sum(mask)))
+  unmatched <- special_case(unmatched, 
+                   mask, 
+                   paste0(specific[i,]$number, " ", 
+                          specific[i,]$street, ", ",
+                          specific[i,]$zip),
+                  specific[i,]$lat, 
+                  specific[i,]$long 
+                   )
+}
 
 ```
 
@@ -637,7 +725,7 @@ samWS <- c("19G10", "19G20", "19G30", "19G40", "19G50", "20G10", "20G20", "20G30
 samWN <- c("20G50", "20G60", "5F30", "4F10", "4F20", "4F30")
 
 samSE <- c("14D50", "13D40", "12D20")
-samSW <- c("17E30", "16E30", "16E40", "17E4", "17E40", "16E20")
+samSW <- c("17E30", "16E30", "16E40", "17E4", "17E40", "16E20", "19G50", "16E10")
 
 samES <- c("12D30", "12D40", "11H40", "9C40")
 samEN <- c("24C60", "8C50")
@@ -665,6 +753,12 @@ PostOakS <- c("18F20")
 XTimberW <- c("3B40")
 XTimberE <- c("3B50")
 
+#   based on incorrect Google mapping
+WBellfortBlvd <- c("19G40")
+WBellfortAve <- c("19G50","17E30","17E40", "15E20", "15E10", "15E30", "15E40" )
+BellfortSt <- c("14D20", "14D30", "13D20")
+
+#   From one string to 2 outputs
 Fix_Fwy <- function(dframe, mask_string, beat_a, beat_b, from_str, to_str_a, to_str_b){
   mask <- grepl(mask_string, dframe$Address)
   print(paste(sum(mask), nrow(dframe)))
@@ -698,6 +792,39 @@ unmatched <- Fix_Fwy(unmatched, "9 POST OAK LN ,",
 #-----  Crosstimbers
 unmatched <- Fix_Fwy(unmatched, "-199 CROSSTIMBERS ", 
                      XTimberW, XTimberE, "CROSS","W CROSS", "E CROSS")
+
+
+#-----  Bellfort for google
+mask <- grepl("W BELLFORT ST ,", unmatched$Address)
+for (beat in WBellfortBlvd){
+  unmatched$Address[mask&(unmatched$Beat==beat)] <-
+    str_replace(unmatched$Address[mask&(unmatched$Beat==beat)], " ST ", " BLVD ")
+}
+for (beat in WBellfortAve){
+  unmatched$Address[mask&(unmatched$Beat==beat)] <-
+    str_replace(unmatched$Address[mask&(unmatched$Beat==beat)], " ST ", " AVE ")
+}
+for (beat in BellfortSt){
+  unmatched$Address[mask&(unmatched$Beat==beat)] <-
+    str_replace(unmatched$Address[mask&(unmatched$Beat==beat)], "W BELLFORT ST ", "BELLFORT ST ")
+}
+
+mask <- grepl("W BELLFORT AVE ,", unmatched$Address)
+for (beat in WBellfortBlvd){
+  unmatched$Address[mask&(unmatched$Beat==beat)] <-
+    str_replace(unmatched$Address[mask&(unmatched$Beat==beat)], " AVE ", " BLVD ")
+}
+for (beat in BellfortSt){
+  unmatched$Address[mask&(unmatched$Beat==beat)] <-
+    str_replace(unmatched$Address[mask&(unmatched$Beat==beat)], "W BELLFORT AVE ", "BELLFORT ST ")
+}
+
+mask <- grepl("W BELLFORT AVE ,", unmatched$Address)
+unmatched$status[mask] <- "redo"
+mask <- grepl("W BELLFORT ST ,", unmatched$Address)
+unmatched$status[mask] <- "redo"
+mask <- grepl("9 BELLFORT ST ,", unmatched$Address)
+unmatched$status[mask] <- "redo"
 
 
 #-----  W Sam
@@ -816,18 +943,18 @@ testregex(unmatched, "Address", dict)
 #   Apply
 unmatched <- applyregex(unmatched, "Address", dict)
 
-
 #    special cases - digits replace last 2 on address
 special <- tribble(
   ~match, ~addr,
-  "ROWLETT",           "98",
+  "MAIN",           "75",
   "BAYBROOK",          "00",
+  "ALLEN",          "09",
   "KELLEY",            "14"
 )
 
 # Skip these, census won't get them, this will speed things up
 
-skips <- c("S HEIGHTS", "FWY", "HOMELESS", "PO BOX", "POBOX","TOMBALL", "HEMPSTEAD", "POST OAK", "1960", "WILCREST", " SAM ", "HONEYWELL", "AVENUE" )
+skips <- c("HOMELESS", "PO BOX", "POBOX","TOMBALL", "HEMPSTEAD", "POST OAK", "1960", " SAM ", "AVENUE" , "9 , Houston")
 
 onlys <- c(" LOOP ", " BELLFORT ")
 
@@ -847,6 +974,7 @@ for (i in begin:nrow(unmatched)) {
   if (unmatched[i,]$status!="success"){ # only the redo's
     # skip hopeless cases
     if (any(str_detect(unmatched[i,]$Address, skips))){next()}
+    ####if (mask[i]==FALSE){next()}
     # only do selected cases
     #if (!any(str_detect(unmatched[i,]$Address, onlys))){next()}
     trys <- trys + 1
@@ -934,8 +1062,9 @@ for (i in 1:nrow(unmatched)){
 
 unmatched %>% 
   filter(grepl("fail", geocode_status)) %>% 
+  filter(!grepl("outside", status)) %>% 
   mutate(street=sub("^[0-9]+-[0-9]+", "", Address))  %>% 
-  mutate(street=trimws(str_extract(street, "[A-Z 0-9]+")))  %>% 
+  mutate(street=trimws(str_extract(street, "[A-Z 0-9-]+")))  %>% 
   group_by(street) %>% 
   summarise(nn=sum(n)) %>% 
   arrange(-nn)
@@ -1017,6 +1146,7 @@ GetLatLongGoogle <- function(address, newaddr){
   x <- unlist(strsplit(unlist(LatLong1$match_address), ","))
   #utstreet <- trimws(sub("^[0-9]+", "", x[1]))
   utstreet <- trimws(x[1])
+  adr <- str_remove(adr, "^0")
   if (tolower(paste(adr,street)) != tolower(utstreet)){
           LatLong1$status <- "Names mismatch"
           return(LatLong1)
@@ -1026,11 +1156,11 @@ GetLatLongGoogle <- function(address, newaddr){
   #   unless LocType == "ROOFTOP"
   
   if (LatLong1$LocType != "ROOFTOP") { # interpolated location
-      addrnumber <- str_extract(address, "^[0-9]+ ")
+      addrnumber <- trimws(str_extract(address, "^[0-9]+ "))
       if (as.numeric(addrnumber)>50){
-        addrnumber2 <- as.character(as.numeric(addrnumber)-15)
+        addrnumber2 <- as.character(as.numeric(addrnumber)-16)
       } else {
-        addrnumber2 <- as.character(as.numeric(addrnumber)+15)
+        addrnumber2 <- as.character(as.numeric(addrnumber)+16)
       }
       address <- str_replace(address, addrnumber, addrnumber2)
       GoogleResults <- geocode(address, output="all")
@@ -1048,6 +1178,59 @@ GetLatLongGoogle <- function(address, newaddr){
   #   All the tests passed, successful return
         LatLong1$status <- "success"
         return(LatLong1)
+  
+}
+
+```
+
+
+```{r add notes}
+
+mask <- grepl("W HOWARD LN", unmatched$RawAddress)
+sum(mask)
+unmatched[mask,]$GType <- "Parole Board in Austin"
+
+mask <- grepl("14000-14099 E 21ST", unmatched$Address)
+sum(mask)
+unmatched[mask,]$GType <- "Dept Pub Safety, Tulsa"
+unmatched[mask,]$status <- "outside boundary"
+
+#   Flag addresses out of range
+
+outofrange <- function(df, mask, min, max){
+  number <- as.numeric(getnumber(df))
+  mask2 <- (number<min)|(number>max)
+  df$status[mask&mask2] <- "address out of range"
+  return(df)
+}
+
+dataOOR <- tribble(
+  ~street, ~min, ~max,
+  "ST EMANUEL", 0, 3799,
+  "RIESNER", 0, 99,
+  "W MONTGOMERY RD", 5600, 11999,
+  "LEY RD", 7100, 10399,
+  "RUSTIC WOODS", 2800, 3999,
+  "SHERMAN ST", 2900, 8099,
+  "GATEBROOK DR", 18300, 19499,
+  "WESTPLACE DR", 8600, 8999
+)
+
+unmatched2 <- unmatched
+unmatched <- unmatched2
+
+for (i in 1:nrow(dataOOR)){
+  mask <- grepl(dataOOR$street[i], unmatched$Address)
+  df2 <- unmatched[mask,] %>% 
+    select(Address, status) %>% 
+    mutate(number=unlist(strsplit(unlist(Address), ","))[1]) %>% 
+    mutate(number=as.numeric(trimws(str_extract(number, "^[0-9]+")))) %>%  
+    mutate(status = case_when(!between(number,
+                                      dataOOR$min[i],
+                                      dataOOR$max[i]) ~ 
+                                "address out of range",
+                                TRUE ~ status))
+  unmatched$status[mask] <- df2$status
   
 }
 
@@ -1098,50 +1281,62 @@ unmatched <- applyregex(unmatched, "Address", dict)
 #    special cases - digits replace last 2 on address
 special <- tribble(
   ~match, ~addr,
-  "BOONRIDGE",      "02",
-  "KARALAS",         "00"
+  "EL DORADO",      "50",
+  "GREENS CROSSING",      "10",
+  "OREM",          "31",
+  "ELLA",      "20"
 )
 
 # Skip these, won't get them, this will speed things up
 
-skips <- c("HOMELESS", "PO BOX", "POBOX", "ENTRANCE", "P O BOX")
+skips <- c("HOMELESS", "PO BOX", "POBOX", "ENTRANCE", "P O BOX", 
+           "99 , Houston")
 
-onlys <- c("INWOOD", "OREM")
+onlys <- c("BELLFORT")
 
 ##########################################
 ##    next spin through data geocoding
 ##########################################
 
-###unmatched <- unmatched %>% mutate(GType=NA) # add new information column
-
-
 geocodeQueryCheck()
 begin <- 1
+successes <- 0
+trys <- 0
 for (i in begin:nrow(unmatched)) {
+  if (i==begin){starttime <- now()}
 #for (i in begin:(begin+98)) {
 #for (i in 151:151) {
-  if (unmatched[i,]$status!="success"){ # only the redo's
+  if (unmatched[i,]$status!="success"){ 
     # skip cases with no street name
     if (grepl("99 +,", unmatched[i,]$Address)){print("--no street--")
       next()}
+    # skip cases outside boundary
+    if (grepl("outside", unmatched[i,]$status)){print("--outside--")
+      next()}
     # skip hopeless cases
     if (any(str_detect(unmatched[i,]$Address, skips))){next()}
+    
     # only do selected cases
-    if (!any(str_detect(unmatched[i,]$Address, onlys))){next()}
+    #if (!any(str_detect(unmatched[i,]$Address, onlys))){next()}
     # skip distance <10 cases
     #if (unmatched[i,]$status=="Distance = 0"){next()}
     # skip GEOMETRIC_CENTER cases
     #if(!is.na(unmatched[i,]$GType) &
     #    unmatched[i,]$GType == "GEOMETRIC_CENTER route") {next()}
+    trys <- trys + 1
     print(paste("--->",i,unmatched[i,1], 
-                format(Sys.time(), "%a %b %d %X %Y")))
+                format(Sys.time(), "%a %b %d %X %Y"),
+                now()+((now()-starttime)/trys)*(nrow(unmatched)-i)
+          ))
+    #print(paste("--->",i,unmatched[i,1], 
+    #            format(Sys.time(), "%a %b %d %X %Y")))
     # Did I already succeed at this match somewhere?
-    a <- check_match(unmatched[i,]$Address, previous_match)
-    if (is_tibble(a)) {
-      unmatched[i,4:10] <- a[1,4:10]
-      print("found previous match in archive")
-      next
-    }
+    #a <- check_match(unmatched[i,]$Address, previous_match)
+    #if (is_tibble(a)) {
+    #  unmatched[i,4:10] <- a[1,4:10]
+    #  print("found previous match in archive")
+    #  next
+    #}
     a <- check_match(unmatched[i,]$Address, unmatched)
     if (is_tibble(a)) {
       unmatched[i,4:10] <- a[1,4:10]
@@ -1157,6 +1352,95 @@ for (i in begin:nrow(unmatched)) {
 
     newaddr <- str_pad(as.character(sample(0:50, 1)),2,pad="0")
     #if (grepl("FWY", unmatched[i,]$Address)){newaddr <- "11"}
+    if(any(str_detect(unmatched[i,]$Address, special$match))){
+      newaddr <- special[str_detect(unmatched[i,]$Address, special$match),]$addr
+    }
+    
+    #   Call google
+    
+    latlong <- GetLatLongGoogle( unmatched[i,]$Address, newaddr)
+    if (latlong$status=="success") {
+      #print(paste("=======final=======",latlong[1,]))
+      print(paste("=======success======="))
+      unmatched[i,]$match_address  <- latlong$match_address
+      unmatched[i,]$lat            <- latlong$lat
+      unmatched[i,]$long           <- latlong$long
+      unmatched[i,]$geocode_status <- "google"
+      unmatched[i,]$status         <- latlong$status
+      unmatched[i,]$GType          <- paste(latlong$LocType, latlong$Type)
+    } else if (latlong$status=="Names mismatch"){
+      print(paste("=======fail=======",latlong[1,]))
+      unmatched[i,]$geocode_status <- "google fail"
+      unmatched[i,]$status         <- latlong$status
+      unmatched[i,]$GType          <- paste(latlong$LocType, latlong$Type)
+      unmatched[i,]$match_address  <- latlong$match_address
+    } else{
+      print(paste("=======fail======="))
+      unmatched[i,]$geocode_status <- "google fail"
+      unmatched[i,]$status         <- latlong$status
+      unmatched[i,]$GType          <- paste(latlong$LocType, latlong$Type)
+      unmatched[i,]$match_address  <- latlong$match_address
+    }
+  }
+  if ((i+1)%%100 == 0){
+    saveRDS(unmatched, "~/Dropbox/CrimeStats/CensusGeoTable_progress_temp.rds")
+    
+  }
+}
+
+old <- readRDS("~/Dropbox/CrimeStats/CensusGeoTable_progress.rds")
+
+new <- bind_rows(old, unmatched) %>% unique()
+
+saveRDS(new, "~/Dropbox/CrimeStats/CensusGeoTable_progress.rds")
+
+#   Percent of unique addresses found, and percent of total found
+
+unmatched %>% 
+  group_by(geocode_status) %>% 
+  summarise(n=n())
+
+
+```
+
+##    rerun google to look for bogus addresses
+
+```{r run google again}
+
+##########################################
+##    next spin through data geocoding
+##########################################
+
+begin <- 44991
+successes <- 0
+trys <- 0
+for (i in begin:nrow(unmatched)) {
+  if (i==begin){starttime <- now()}
+  if (unmatched[i,]$status=="success" &
+      unmatched[i,]$geocode_status=="google"){ # only the successes
+
+    trys <- trys + 1
+    print(paste("--->",i,unmatched[i,1], 
+                format(Sys.time(), "%a %b %d %X %Y"),
+                now()+((now()-starttime)/trys)*(nrow(unmatched)-i)
+          ))    
+    
+    if(!is.na(unmatched[i,]$GType) &
+        grepl("ROOFTOP", unmatched[i,]$GType)) {next()}
+    # Did I already succeed at this match somewhere?
+    a <- check_match(unmatched[i,]$Address, unmatched)
+    if (is_tibble(a)) {
+      unmatched[i,4:10] <- a[1,4:10]
+      print("found previous match in current")
+    }
+    a <- check_match(unmatched[i,]$Address, generated)
+    if (is_tibble(a)) {
+      unmatched[i,4:10] <- a[1,4:10]
+      print("found previous match in generated")
+      next
+    }
+    
+    newaddr <- str_pad(as.character(sample(0:50, 1)),2,pad="0")
     if(any(str_detect(unmatched[i,]$Address, special$match))){
       newaddr <- special[str_detect(unmatched[i,]$Address, special$match),]$addr
     }
@@ -1231,6 +1515,7 @@ for (i in 1:2) {
 
 ```
 
+
 ```{r interpolate fwy}
 
 Fwy_interpolate <- function(previous_match, unmatched, match_str, start, stop) {
@@ -1264,21 +1549,31 @@ Fwy_interpolate <- function(previous_match, unmatched, match_str, start, stop) {
 }
 
 
-katy <- Fwy_interpolate(previous_match, unmatched, "Katy Fwy", 2550, 21750)
+katy <- Fwy_interpolate(previous_match, unmatched, "Katy Fwy", 250, 21850)
 northfwy <- Fwy_interpolate(previous_match, unmatched, "North Fwy", 150, 17150)
-eastex <- Fwy_interpolate(previous_match, unmatched, "Eastex Fwy", 950, 24350)
-NSamE <- Fwy_interpolate(previous_match, unmatched, "N SAM HOUSTON PKWY E", 650, 9850)
-SSamE <- Fwy_interpolate(previous_match, unmatched, "S SAM HOUSTON PKWY E", 3550, 6450)
-SSamE2 <- Fwy_interpolate(previous_match, unmatched, "S SAM HOUSTON PKWY E", 9250, 12450)
+eastex <- Fwy_interpolate(previous_match, unmatched, "Eastex Fwy", 950, 26050)
+NSamE <- Fwy_interpolate(previous_match, unmatched, "N SAM HOUSTON PKWY E", 50, 9850)
+SSamE <- Fwy_interpolate(previous_match, unmatched, "S SAM HOUSTON PKWY E", 3550, 12450)
 ESamS <- Fwy_interpolate(previous_match, unmatched, "EAST SAM HOUSTON PKWY S", 5450, 7950)
-SSamW <- Fwy_interpolate(previous_match, unmatched, "S SAM HOUSTON PKWY W", 5450, 9150)
-SSamW2 <- Fwy_interpolate(previous_match, unmatched, "S SAM HOUSTON PKWY W", 3550, 5450)
-Gulf <- Fwy_interpolate(previous_match, unmatched, "GULF FWY", 550, 19550)
+SSamW <- Fwy_interpolate(previous_match, unmatched, "S SAM HOUSTON PKWY W", 650, 12650)
+WSamS <- Fwy_interpolate(previous_match, unmatched, "W SAM HOUSTON PKWY S", 50, 10650)
+Gulf <- Fwy_interpolate(previous_match, unmatched, "GULF FWY", 550, 21750)
+SouthFwy <- Fwy_interpolate(previous_match, unmatched, "SOUTH FWY", 2200, 13850)
+SWFwy <- Fwy_interpolate(previous_match, unmatched, "SOUTHWEST FWY", 50, 14150)
 Blackhawk <- Fwy_interpolate(previous_match, unmatched, "BLACKHAWK BLVD", 8450, 9850)
-Evergreen <- Fwy_interpolate(previous_match, unmatched, "VILLAGE EVERGREEN TRAIL", 14550, 9850)
+WestheimPkwy <- Fwy_interpolate(previous_match, unmatched, "WESTHEIMER PKWY", 15050, 25850)
+Orem <- Fwy_interpolate(previous_match, unmatched, "W OREM DR", 1250, 7450)
+WLoopS <- Fwy_interpolate(previous_match, unmatched, "W LOOP S FWY", 150, 9550)
+SLoopE <- Fwy_interpolate(previous_match, unmatched, "S LOOP E FWY", 150, 8850)
+SLoopW <- Fwy_interpolate(previous_match, unmatched, "S LOOP W", 150, 8750)
+Kingwood <- Fwy_interpolate(previous_match, unmatched, "KINGWOOD DR", 150, 19750)
+BarkClod <- Fwy_interpolate(previous_match, unmatched, "BARKER-CLODINE RD", 150, 19750)
 
-#generated <- bind_rows(katy, northfwy, eastex, NSamE) 
-generated <- bind_rows(generated, SSamW2) 
+#generated <- bind_rows(katy, northfwy, eastex, NSamE, SSamE,
+#                       ESamS, SSamW, WSamS, Gulf, SouthFwy,
+#                       SWFwy, Blackhawk) 
+generated <- bind_rows(generated, SouthFwy) 
+generated <- unique(generated)
 
 #---------------------------------------
 #   E LOOP FWY is special
@@ -1310,7 +1605,7 @@ newELoop <- tibble(addr=newlat$x, lat=newlat$y, long=newlon$y) %>%
   select(Address:match_address,lat, long, tract, block, status)
 #---------------------------------------
 
-generated <- bind_rows(generated, newELoop) 
+#generated <- bind_rows(generated, newELoop) 
 
 saveRDS(generated, "~/Dropbox/CrimeStats/Generated_Coordinates.rds")
 
@@ -1328,6 +1623,33 @@ unmatched[mask,]$Address  <- str_replace(unmatched[mask,]$Address, "9 V", "9 MT 
 
 #-------------------------------------
 
+mask <- grepl("5F30", unmatched$Beat)
+mask2 <- as.numeric(unlist(str_split(unmatched$Address,"-", simplify=TRUE))[,1])<11000
+mask <- mask&mask2
+mask3 <- grepl("NORTHWEST", unmatched$Address)
+mask <- mask&mask2&mask3
+sum(mask)
+unmatched[mask,]$Address  <- str_replace(unmatched[mask,]$Address, 
+                              "NORTHWEST FWY", "NORTHWEST DR")
+
+#-------------------------------------
+
+mask1 <- grepl("google fail", unmatched$geocode_status)
+mask2 <- !is.na(unmatched$block)
+mask <- mask1&mask2
+sum(mask)
+unmatched[mask,]$geocode_status  <- "census"
+
+#-------------------------------------
+
+mask <- grepl("24C30", unmatched$Beat)
+sum(mask)
+unmatched[mask,]$Address  <- str_replace(unmatched[mask,]$Address, 
+                              "9 MAIN ST", "9 S MAIN ST")
+
+#-------------------------------------
+#-------------------------------------
+
 mask <- grepl("15E40", unmatched$Beat)
 unmatched[mask,]$Address  <- str_replace(unmatched[mask,]$Address, 
                               "S LOOP E FWY", "S LOOP W FWY")
@@ -1343,12 +1665,30 @@ unmatched[mask,]$geocode_status    <- "google"
 
 #-------------------------------------
 
+mask <- grepl("@", unmatched$Address)
+sum(mask)
+
+unmatched[mask,]$Address <- str_replace(unmatched[mask,]$Address, 
+                                        "@ .*$", "")
+unmatched[mask,]$status    <- "Names mismatch"
+unmatched[mask,]$geocode_status    <- "google fail"
+#-------------------------------------
+
 mask <- grepl(" WEST RD", unmatched$match_address)
 
 unmatched[mask,]$lat <- NA
 unmatched[mask,]$long <- NA
 unmatched[mask,]$status    <- "Names mismatch"
 unmatched[mask,]$geocode_status    <- "google fail"
+
+#-------------------------------------
+#   Bus station is key to fixing address
+mask <- grepl(" PRESSLER ", unmatched$Address) 
+sum(mask)
+
+unmatched[mask,]$Address <- str_replace(unmatched[mask,]$Address, "900-999", "1900-1999")
+unmatched[mask,]$Address <- str_replace(unmatched[mask,]$Address, "1000-1099", "1900-1999")
+
 
 #-------------------------------------
 
@@ -1400,6 +1740,25 @@ unmatched[mask,]$status    <- "Names mismatch"
 unmatched[mask,]$geocode_status    <- "google fail"
 unmatched[mask,]$Address  <- str_replace(unmatched[mask,]$Address, " EAST ST ", " EAST FWY ")
 
+#-------------------------------------
+  mask1 <- grepl("SOUTH FWY", unmatched$Address, ignore.case = TRUE)
+  mask2 <- grepl("FWY BLVD", unmatched$RawAddress, ignore.case = TRUE)
+  mask2[is.na(mask2)] <- FALSE
+  mask <- mask1&mask2 
+  print(sum(mask))
+  unmatched[mask,]$Address <- str_replace(unmatched[mask,]$Address,
+                                           "SOUTH FWY",
+                                           "SOUTH BLVD")
+
+#-------------------------------------
+  mask1 <- grepl("W SAM HOUSTON PKWY S", unmatched$match_address, ignore.case = TRUE)
+  mask2 <- as.numeric(str_extract(unmatched$match_address, "\\d+"))>10699
+  mask2[is.na(mask2)] <- FALSE
+  mask <- mask1&mask2 
+  print(sum(mask))
+  unmatched[mask,]$Address <- str_replace(unmatched[mask,]$Address,
+                                           "W SAM HOUSTON PKWY S",
+                                           "S SAM HOUSTON PKWY W")
 
 #-------------------------------------
 
