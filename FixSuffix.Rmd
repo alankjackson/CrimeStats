@@ -103,6 +103,10 @@ df <- df %>%
   filter(geocode_status=="census") %>% 
   select(match_address, Beat)
 
+#   Flag records not in city
+
+
+
 #   Some corrections to Census names
 
 source("Edit_Census_Addresses.R") # load in address edits
