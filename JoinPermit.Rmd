@@ -1,0 +1,65 @@
+---
+title: "Add permit lat/longs"
+author: "Alan Jackson"
+date: "April 23, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+library(tidyverse)
+library(skimr)
+library(sf)
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##  do a join between permit geocoding and my geocoding
+
+```{r join databases}
+
+Geotable <- readRDS("~/Dropbox/CrimeStats/CensusGeoTable_progress.rds")
+Permits <- readRDS("~/Dropbox/CrimeStats/PermitDB_Geocode.rds")
+
+Geotable <- Geotable %>% 
+  select(Address, match_address, Beat, n, lat, long, geocode_status, status) %>% 
+  mutate(Address=toupper(Address)) %>% 
+  mutate(Address=str_remove(Address," , .*"))
+
+Permits <- Permits %>% 
+  select(Address, Lat, Lon) %>% 
+  mutate(Address=str_replace(Address, "000-099", "0-99")) %>% 
+  group_by(Address) %>% 
+  summarise(NewLat=mean(Lat), NewLon=mean(Lon)) %>% 
+  mutate(oldAddress=Address) %>% 
+  mutate(Address=toupper(Address)) %>% 
+  mutate(Address=str_remove(Address," , .*")) 
+
+# Add Beat to Permits
+
+Beats <- read_sf('/home/ajackson/Dropbox/CrimeStats/BeatPolys/Houston_Police_Beats.shp')
+
+
+Final <- full_join(Geotable, Permits, by="Address")
+
+```
+
+
+##    Test output in various ways
+
+- Look at distance distribution between nominally similar points
+- Count unique addresses for both input datasets
+- compare distances census vs google against permits
+
+```{r test data}
+
+Final <- Final %>% 
+  mutate(dist=sqrt((((lat-NewLat)*364191)**2) +
+                   ((long-NewLon)*311695)**2)) 
+  skim()
+  ggplot(aes(x=dist)) +
+    geom_histogram(binwidth=10)
+
+```
+
+
