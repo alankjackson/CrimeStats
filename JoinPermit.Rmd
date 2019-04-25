@@ -10,6 +10,7 @@ output: html_document
 library(tidyverse)
 library(skimr)
 library(sf)
+library(nngeo)
 
 knitr::opts_chunk$set(echo = TRUE)
 ```
@@ -24,7 +25,8 @@ Permits <- readRDS("~/Dropbox/CrimeStats/PermitDB_Geocode.rds")
 Geotable <- Geotable %>% 
   select(Address, match_address, Beat, n, lat, long, geocode_status, status) %>% 
   mutate(Address=toupper(Address)) %>% 
-  mutate(Address=str_remove(Address," , .*"))
+  mutate(Address=str_remove(Address," , .*")) %>% 
+  filter(!is.na(lat))
 
 Permits <- Permits %>% 
   select(Address, Lat, Lon) %>% 
@@ -39,6 +41,34 @@ Permits <- Permits %>%
 
 Beats <- read_sf('/home/ajackson/Dropbox/CrimeStats/BeatPolys/Houston_Police_Beats.shp')
 
+#   find points in polygons
+#   since beats don't overlap (I hope), let's just grab the array index
+#   instead of creating a huge matrix
+
+# first make Permits an sf object
+
+googlecrs <- 4326
+Permits <- st_as_sf(Permits, coords=c("NewLon", "NewLat"),
+                    crs=googlecrs, agr = "identity")
+Geotable <- st_as_sf(Geotable, coords=c("long", "lat"),
+                    crs=googlecrs, agr = "identity")
+
+keep <- Permits
+# intersect
+
+Geotable <- st_join(Geotable, Beats, join=st_nn, maxdist=500) 
+
+#   Which records have conflicting beat information?
+
+Geotable_conflicts <- Geotable %>% 
+  filter(Beats!=Beat)
+
+Permits <- st_join(Permits, Beats, join=st_nn, maxdist=500) 
+
+Permits <- Permits %>% 
+  select(Address, oldAddress, Beats)
+                      
+#   Final join of permit data to crime data
 
 Final <- full_join(Geotable, Permits, by="Address")
 
