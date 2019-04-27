@@ -11,6 +11,8 @@ library(tidyverse)
 library(skimr)
 library(sf)
 library(nngeo)
+library(units)
+
 
 knitr::opts_chunk$set(echo = TRUE)
 ```
@@ -18,6 +20,13 @@ knitr::opts_chunk$set(echo = TRUE)
 ##  do a join between permit geocoding and my geocoding
 
 ```{r join databases}
+st_drop_geometry <- function(x) {
+  if(inherits(x,"sf")) {
+      x <- st_set_geometry(x, NULL)
+      class(x) <- 'data.frame'
+  }
+  return(x)
+}
 
 Geotable <- readRDS("~/Dropbox/CrimeStats/CensusGeoTable_progress.rds")
 Permits <- readRDS("~/Dropbox/CrimeStats/PermitDB_Geocode.rds")
@@ -61,7 +70,32 @@ Geotable <- st_join(Geotable, Beats, join=st_nn, maxdist=500)
 #   Which records have conflicting beat information?
 
 Geotable_conflicts <- Geotable %>% 
-  filter(Beats!=Beat)
+  filter(Beats!=Beat) %>% 
+  select(Address, match_address, Beat, n, geocode_status, status, Beats)
+
+#   What is distance between point and presumed beat?
+
+tempGeo <- Geotable %>% 
+  st_drop_geometry() %>% 
+  select(Address, Beat)
+
+tempBeats <- Beats %>% 
+  rename(Beat=Beats)   
+
+tempBeats <- 
+  left_join(tempGeo %>% as.data.frame(), tempBeats %>% as.data.frame(), by = "Beat") 
+
+tempBeats <-  st_sf(tempBeats, sf_column_name = 'geometry')
+
+Geotable_beatdistance <- 
+  st_distance(Geotable, tempBeats, by_element = TRUE)
+
+Geotable$distance <-  Geotable_beatdistance  
+
+Geotable <- Geotable %>% 
+  select(Address, match_address, Beat, n, geocode_status, status, distance) %>% 
+  filter(distance>set_units(250,"meters")) %>% 
+  filter(n>2)
 
 Permits <- st_join(Permits, Beats, join=st_nn, maxdist=500) 
 
