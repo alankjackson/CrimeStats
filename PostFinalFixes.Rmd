@@ -1,0 +1,504 @@
+---
+title: "Post Final Fix"
+author: "Alan Jackson"
+date: "April 24, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+
+#unmatched <- readRDS( "~/Dropbox/CrimeStats/CensusGeoTable_progress.rds")
+
+options(stringsAsFactors = FALSE)
+
+apikey <- readRDS("~/Dropbox/CrimeStats/apikey.rds")
+register_google(key = apikey)
+
+HoustonBdy <- c(-95.789963, 29.518566, -95.005814, 30.117875)
+BoundBox <- "bounds=29.518566,-95.789963|30.117875,-95.005814"
+
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##    Fix things looking at Beats intersecting with points turfed up
+
+
+```{r fix it}
+
+#  ----------  botched South Fwy
+
+mask1 <- grepl("SOUTH FWY", unmatched$Address)
+mask2 <- grepl(" DR ", unmatched$RawAddress)
+mask <- mask1&mask2
+sum(mask)
+unmatched[mask,]$Address  <- str_replace(unmatched[mask,]$Address, 
+                              "SOUTH FWY", "SOUTH DR")
+
+unmatched[mask,]$status  <- "redo"
+
+mask1 <- grepl("SOUTH FWY", unmatched$Address)
+mask2 <- grepl(" LOOP ", unmatched$RawAddress)
+mask <- mask1&mask2
+sum(mask)
+unmatched[mask,]$Address  <- str_replace(unmatched[mask,]$Address, 
+                              "SOUTH FWY", "S LOOP E FWY")
+
+unmatched[mask,]$status  <- "redo"
+
+mask1 <- grepl("SOUTH FWY", unmatched$Address)
+mask2 <- grepl(" CT ", unmatched$RawAddress)
+mask <- mask1&mask2
+sum(mask)
+unmatched[mask,]$Address  <- str_replace(unmatched[mask,]$Address, 
+                              "SOUTH FWY", "SOUTH CT")
+
+unmatched[mask,]$status  <- "redo"
+
+unmatched[mask1,]$status  <- "redo"
+
+#  ----------  Census is just wrong, don't know why
+
+mask1 <- grepl("HOLLISTER ST", unmatched$Address)
+mask2 <- grepl(" DR,", unmatched$match_address)
+mask <- mask1&mask2
+sum(mask)
+
+unmatched[mask,]$status  <- "redo"
+
+#  ----------  Census is just wrong, don't know why
+
+mask1 <- grepl("SOUTHWEST FWY", unmatched$Address)
+mask2 <- grepl("1A50", unmatched$Beat)
+mask3 <- grepl("77074", unmatched$match_address)
+mask <- mask1&mask2&mask3
+sum(mask)
+
+unmatched[mask,]$status  <- "redo"
+
+#  ----------  West airport, not airport
+
+mask1 <- grepl("W AIRPORT", unmatched$Address)
+mask2 <- grepl("16E20", unmatched$Beat)
+mask3 <- grepl("16E30", unmatched$Beat)
+mask <- mask1&(mask2|mask3)
+sum(mask)
+
+unmatched[mask,]$status  <- "redo"
+
+#  ----------  W Loop S
+
+unmatched$Address <- str_replace(unmatched$Address, "W LOOP S ,", 
+                                                    "W LOOP S FWY ,")
+mask1 <- grepl("W LOOP S", unmatched$Address)
+mask2 <- grepl("77056", unmatched$match_address)
+mask3 <- grepl("77027", unmatched$match_address)
+mask <- mask1&!mask2&!mask3
+sum(mask)
+
+unmatched[mask,]$status  <- "redo"
+
+#  ----------  S Sam Houston Pkwy E
+
+mask1 <- grepl("S SAM HOUSTON PKWY E", unmatched$Address)
+sum(mask1)
+
+unmatched[mask1,]$status  <- "redo"
+
+
+
+
+
+
+```
+##  redo special cases just in case
+
+```{r special}
+unmatched2 <- unmatched # just in case
+
+###############   special case function
+special_case <- function(mydf, mask, address, lat, long){
+  if (sum(mask)>0){
+    print(paste(sum(mask), "records changed"))
+    mydf[mask,]$match_address <- address
+    mydf[mask,]$status    <- "success"
+    mydf[mask,]$geocode_status    <- "manual"
+    mydf[mask,]$lat    <- lat
+    mydf[mask,]$long   <- long
+    mydf[mask,]$GType    <- "RANGE_INTERPOLATED manual"
+  }
+  return(mydf)
+}
+#################
+
+#   Specific road spots
+
+specific <- tribble(
+  ~block, ~street, ~number, ~lat, ~long, ~zip,
+  "900-999", "Skyline Vista", "930", 29.759302, -95.377399, "Houston, TX 77019",
+  "0-99", "N SAN JACINTO ST", "30", 29.762918, -95.357548, "Houston, TX 77002",
+  "1100-1199", "W OREM DR", "1250", 29.627650, -95.387823, "Houston, TX 77047",
+  "8000-8099", "W OREM DR", "8050", 29.625046, -95.504899, "Houston, TX 77085",
+  "1100-1199", "ENTRANCE", "6604 Arnot", 29.769932, -95.429635, "Houston, TX 77007",
+  "200-299", "KATY FWY", "250", 29.777888, -95.372539, "Houston, TX 77007",
+"2100-2199", "KATY FWY", "2150", 29.778031, -95.379982, "Houston, TX 77007",
+"1900-1999", "KATY FWY", "1950", 29.779203, -95.375940, "Houston, TX 77007",
+"2000-2099", "PRESSLER ST", "2050", 29.704626, -95.407318, "Houston, TX 77030",
+"1400-1499", "PRESSLER ST", "1450", 29.704416, -95.396160, "Houston, TX 77030",
+"26000-26099", "EASTEX FWY", "26050", 30.071838, -95.245656, "Porter, TX 77365", 
+"3400-3499", "BARKER-CLODINE RD", "3425", 29.734172, -95.688014, "Houston, TX, 77094",
+"14700-14799", "WOODSON PARK DR", "14700", 29.931124, -95.203876,"Houston, TX 77044",
+"14600-14699", "VILLAGE EVERGREEN TRAIL", "14650", 29.576914, -95.151576, "Houston, TX 77062",
+"14700-14799", "VILLAGE EVERGREEN TRAIL", "14750", 29.575495, -95.150133, "Houston, TX 77062",
+"14800-14899", "VILLAGE EVERGREEN TRAIL", "14850", 29.574021, -95.149039, "Houston, TX 77062",
+"4300-4399", "WOODLAND HILLS DR", "4350", 30.075192, -95.213783, "Kingwood, TX 77339",
+"2800-2899", "VICTORY DR", "2801", 29.870550, -95.452790, "Houston, TX 77088",
+"2400-2499", "WALKER ST", "2400", 29.750399, -95.352220, "Houston, TX 77003",
+"18400-18499", "GATEBROOK DR", "18400", 29.555526, -95.150419, "Webster, TX 77598",
+"18300-18399", "GATEBROOK DR", "18350", 29.555826, -95.150728, "Webster, TX 77598",
+"10700-10799", "ELLA BLVD", "10755", 29.939246, -95.432656, "Houston, TX 77067",
+"7800-7899", "MORLEY ST", "7850", 29.661369, -95.277006, "Houston, TX 77061",
+"4400-4499", "NORTHPARK DR", "4450", 30.070439, -95.181017, "Kingwood, TX 77345",
+"2200-2299", "SOUTH FWY", "2250", 29.742508, -95.364159, "Houston, TX 77003",
+"4800-4899", "GLORY LAND", "4850", 29.677277, -95.351772, "Houston, TX 77033",
+"4900-4999", "GLORY LAND", "4950", 29.676764, -95.350023, "Houston, TX 77033",
+"7000-7099", "NORTHWEST DR", "7050", 29.847370, -95.496132, "Houston, TX 77092",
+"7200-7299", "NORTHWEST DR", "7250", 29.849742, -95.499234, "Houston, TX 77092",
+"14100-14199", "SPACE CENTER BLVD", "14150", 29.591602, -95.137589, "Houston, TX 77062",
+"9700-9799", "CLEARWOOD DR", "9750", 29.627978, -95.248547, "Houston, TX 77075",
+"5500-5599", "TIDWELL ESTATES LANE", "5550", 29.846497, -95.432640, "Houston, TX 77091",
+"1600-1699", "ZOO CIRCLE DR", "1650", 29.715758, -95.389866, "Houston, TX 77030",
+"3700-3799", "SOUTHWEST FWY", "3797", 29.728644, -95.437044, "Houston, TX 77027",
+"100-199", "GULF FWY", "150", 29.761877, -95.372678, "Houston, TX 77002",
+"200-299", "GULF FWY", "250", 29.761063, -95.373299, "Houston, TX 77002",
+"300-399", "GULF FWY", "350", 29.759926, -95.373776, "Houston, TX 77002",
+"3600-3699", "W BELLFORT AVE", "3650", 29.672850, -95.435746, "Houston, TX 77025",
+"1500-1599", "W BELLFORT AVE", "1550", 29.673346, -95.399771, "Houston, TX 77054",
+"9500-9599", "ROWLETT RD", "9550", 29.631819, -95.234351, "Houston, TX 77075",
+"2400-2499", "SAWYER HEIGHTS ST", "2450", 29.775153, -95.384886, "Houston, TX 77007",
+"5600-5699", "S LAKE HOUSTON PKWY", "5650", 29.813299, -95.210692, "Houston, TX 77049",
+"00-99", "W LAKE HOUSTON PKWY", "50", 30.092091, -95.191164, "Porter, TX 77365",
+"5700-5799", "DEEP FOREST DR", "5750",  29.850715, -95.477162, "Houston, TX 77092",
+"10400-10499", "CLUB CREEK DR", "10400", 29.689646, -95.553926, "Houston, TX 77036",
+"3800-3899", "N MCCARTY ST", "3850", 29.795996, -95.272480, "Houston, TX 77029",
+"0-99", "EL DORADO BLVD", "50", 29.554233, -95.152973, "Webster, TX 77598",
+"13000-13099", "S MAIN ST", "13000", 29.643500, -95.473750, "Houston, TX 77085",
+"0-99", "HOBBY AIRPORT LOOP", "50", 29.654723, -95.276696, "Houston, TX 77061",
+"13800-13899", "BLUERIDGE RD", "13850", 29.625651, -95.492953, "Houston, TX 77085",
+"5400-5499", "WHITLEY ST", "5400", 29.717909, -95.410526, "Houston, TX 77005",
+"3200-3299", "E LOOP N FWY", "3299", 29.769509, -95.265411, "Houston, TX 77029",
+"0-99", "W EL DORADO BLVD", "50", 29.552748, -95.154955, "Friendswood, TX 77546",
+"800-899", "WOODLAND HILLS DR", "800", 30.027739, -95.209054, "Kingwood, TX 77339",
+"1400-1499", "WOODLAND HILLS DR", "1450", 30.031889, -95.216047, "Kingwood, TX 77339",
+"900-999", "PACIFIC ST", "950", 29.746687, -95.390529, "Houston, TX 77006",
+"12200-12299", "KUYKENDAHL RD", "12250", 29.961347, -95.421399, "Houston, TX 77060",
+"10800-10899", "FUQUA ST", "10800", 29.611496, -95.225305, "Houston, TX 77089",
+"1800-1899", "BARKER-CLODINE RD", "1850", 29.773785, -95.685505, "Houston, TX 77094",
+"3500-3599", "BARKER-CLODINE RD", "3550", 29.734850, -95.687270, "Houston, TX 77082",
+"15400-15499", "DIPLOMATIC PLAZA DR", "15450", 29.940739, -95.321507, "Houston, TX 77032",
+"15500-15599", "DIPLOMATIC PLAZA DR", "15550", 29.942524, -95.321534, "Houston, TX 77032",
+"7600-7699", "E OREM DR", "7690", 29.625445, -95.285922, "Houston, TX 77075",
+"3900-3999", "E OREM DR", "3990", 29.628765, -95.364568, "Houston, TX 77047"
+)
+
+for (i in 1:nrow(specific)) {
+  mask <- grepl(paste(specific[i,]$block, specific[i,]$street), 
+                unmatched$Address, ignore.case=TRUE)
+  print(paste(specific[i,]$street, sum(mask)))
+  unmatched <- special_case(unmatched, 
+                   mask, 
+                   paste0(specific[i,]$number, " ", 
+                          specific[i,]$street, ", ",
+                          specific[i,]$zip),
+                  specific[i,]$lat, 
+                  specific[i,]$long 
+                   )
+}
+
+```
+
+
+##  Redo google geocoding to see what we can recover easily
+
+But later, check these. Set geocode_status to "google redo" if
+successful, "redo fail" if not
+
+```{r google redo}
+
+#===============================
+#   check for previous match
+#===============================
+check_match <- function(test_Address, testdata){
+    # Did I already succeed at this match somewhere?
+    a <- testdata %>% filter(test_Address == Address,
+                              status=="success" )
+    if (nrow(a)>0){
+      return(a)
+    } else {return(FALSE)}
+}
+
+```
+
+##   manual points
+
+```{r manual}
+###############   special case function
+special_case <- function(mydf, mask, address, lat, long){
+  if (sum(mask)>0){
+    print(paste(sum(mask), "records changed"))
+    mydf[mask,]$match_address <- address
+    mydf[mask,]$status    <- "success"
+    mydf[mask,]$geocode_status    <- "manual redo"
+    mydf[mask,]$lat    <- lat
+    mydf[mask,]$long   <- long
+    mydf[mask,]$GType    <- "RANGE_INTERPOLATED manual"
+  }
+  return(mydf)
+}
+#################
+
+specific <- tribble(
+  ~block, ~street, ~number, ~lat, ~long, ~zip,
+  "10800-10899", "South Dr", "10850", 29.667007, -95.570500, "Houston, TX 77099",
+  "10400-10499", "South Dr", "10450", 29.667115, -95.564513, "Houston, TX 77099",
+  "10600-10699", "South Dr", "10650", 29.667078, -95.567243, "Houston, TX 77099",
+  "10700-10799", "South Dr", "10750", 29.667078, -95.567243, "Houston, TX 77099",
+  "10300-10399", "South Dr", "10350", 29.667138, -95.561327, "Houston, TX 77099",
+  "5600-5699", "Hollister St", "5650", 29.847883, -95.506000, "Houston, TX 77040"
+)
+
+for (i in 1:nrow(specific)) {
+  mask <- grepl(paste(specific[i,]$block, specific[i,]$street), 
+                unmatched$Address, ignore.case=TRUE)
+  print(paste(specific[i,]$street, sum(mask)))
+  unmatched <- special_case(unmatched, 
+                   mask, 
+                   paste0(specific[i,]$number, " ", 
+                          specific[i,]$street, ", ",
+                          specific[i,]$zip),
+                  specific[i,]$lat, 
+                  specific[i,]$long 
+                   )
+}
+```
+
+
+```{r GetLatLongGoogle}
+
+#   Function for pulling fields out of nested lists returned by geocode
+getfields <- function(x){
+              if(! is.na(x) && length(x$results)>0)  {tibble(
+              lat=as.numeric(x$results[[1]]$geometry$location$lat),
+              long=as.numeric(x$results[[1]]$geometry$location$lng),
+              match_address=x$results[[1]]$formatted_address,
+              LocType=x$results[[1]]$geometry$location_type,
+              Type=unlist(x$results[[1]]$types[1])
+              )
+              } else if ("status" %in% names(x) &&
+                         x$status=="ZERO_RESULTS"){
+                tibble(Type=x$status,lat=NA,long=NA,
+                           match_address=NA,LocType=NA )
+              } else{
+                tibble(Type=NA,lat=NA,long=NA,
+                           match_address=NA,LocType=NA )
+              }
+}
+
+#     Process google results and check for accuracy
+
+GetLatLongGoogle <- function(address, newaddr){
+  # prepare address
+  x <- unlist(strsplit(unlist(address), ","))
+  city <- trimws(x[2])
+  state <- trimws(x[3])
+  adr <- unlist(strsplit(str_extract(x[1], "^[0-9]+-[0-9]+"),"-"))[1]
+  adr <- str_replace(adr, "00$", newaddr)
+  adr <- str_replace(adr, "^0$", newaddr)
+  street <- trimws(sub("^[0-9]+-[0-9]+", "", x[1]))
+  address <- paste(adr, street, ",", city, ",", state)
+  
+  #   get results from given address
+  
+  #GoogleResults <- geocode(address, output="all")
+  GoogleResults <- geocode(address, output="all", inject=BoundBox)
+  LatLong1 <- getfields(GoogleResults)
+  
+  #   Did we error?
+  
+  if (is.na(LatLong1$Type) |
+      LatLong1$Type == "ZERO_RESULTS"){
+          LatLong1$status <- "no result"
+          return(LatLong1)
+      }
+  
+  #   Are we within the city?
+  
+  if (!between(LatLong1$lat, HoustonBdy[2], HoustonBdy[4]) |
+      !between(LatLong1$long, HoustonBdy[1], HoustonBdy[3])){
+          LatLong1$status <- "outside boundary"
+          return(LatLong1)
+      }
+  
+  #   Is it a bogus location at center of long street?
+  
+  if (LatLong1$LocType == "GEOMETRIC_CENTER") { # bad location
+          LatLong1$status <- "Road only, street number ignored"
+          return(LatLong1)
+  }
+  
+  # REALLY bogus location - don't want this
+    
+  if (LatLong1$LocType == "APPROXIMATE" ) { # bad location
+          LatLong1$status <- "City only, street ignored"
+          return(LatLong1)
+  }
+  
+  #   Is the match name "close enough"?
+  x <- unlist(strsplit(unlist(LatLong1$match_address), ","))
+  #utstreet <- trimws(sub("^[0-9]+", "", x[1]))
+  utstreet <- trimws(x[1])
+  adr <- str_remove(adr, "^0")
+  if (tolower(paste(adr,street)) != tolower(utstreet)){
+          LatLong1$status <- "Names mismatch"
+          return(LatLong1)
+  }
+  
+  #   Now tweak the street number and get a new set
+  #   unless LocType == "ROOFTOP"
+  
+  if (LatLong1$LocType != "ROOFTOP") { # interpolated location
+      addrnumber <- trimws(str_extract(address, "^[0-9]+ "))
+      if (as.numeric(addrnumber)>50){
+        addrnumber2 <- as.character(as.numeric(addrnumber)-16)
+      } else {
+        addrnumber2 <- as.character(as.numeric(addrnumber)+16)
+      }
+      address <- str_replace(address, addrnumber, addrnumber2)
+      GoogleResults <- geocode(address, output="all")
+      LatLong2 <- getfields(GoogleResults)
+        
+    #   Are the answers the same? If so, we have a problem
+      distance <- dist(rbind(c(LatLong1$lat, LatLong1$long),
+                        c(LatLong2$lat, LatLong2$long))) *
+                        69*5280
+      if (distance < 10){# could be almost anywhere, reject
+          LatLong1$status <- paste("Distance =",as.character(distance))
+          return(LatLong1)
+      }
+  }
+  #   All the tests passed, successful return
+        LatLong1$status <- "success"
+        return(LatLong1)
+  
+}
+
+```
+
+```{r run google}
+
+unmatched2 <- unmatched
+
+#    special cases - digits replace last 2 on address
+special <- tribble(
+  ~match, ~addr,
+  "12499 SOUTH DR",          "31",
+  "12399 SOUTH DR",          "35",
+  "12199 SOUTH DR",          "03",
+  "CENTRAL GREEN BLVD",      "00"
+)
+
+onlys <- c("SOUTH DR")
+
+##########################################
+##    next spin through data geocoding
+##########################################
+
+begin <- 1
+successes <- 0
+trys <- 0
+for (i in begin:nrow(unmatched)) {
+  if (i==begin){starttime <- now()}
+  if (unmatched[i,]$status=="redo" |
+      unmatched[1,]$geocode_status=="redo fail"){ 
+    
+    # only do selected cases
+    if (!any(str_detect(unmatched[i,]$Address, onlys))){next()}
+    
+    trys <- trys + 1
+    print(paste("--->",i,unmatched[i,1], 
+                format(Sys.time(), "%a %b %d %X %Y"),
+                now()+((now()-starttime)/trys)*(nrow(unmatched)-i)
+          ))
+    #print(paste("--->",i,unmatched[i,1], 
+    #            format(Sys.time(), "%a %b %d %X %Y")))
+    # Did I already succeed at this match somewhere?
+    #a <- check_match(unmatched[i,]$Address, previous_match)
+    #if (is_tibble(a)) {
+    #  unmatched[i,4:10] <- a[1,4:10]
+    #  print("found previous match in archive")
+    #  next
+    #}
+    a <- check_match(unmatched[i,]$Address, unmatched)
+    if (is_tibble(a)) {
+      unmatched[i,4:10] <- a[1,4:10]
+      print("found previous match in current")
+      next
+    }
+
+      # pick a random address to try
+    newaddr <- str_pad(as.character(sample(0:50, 1)),2,pad="0")
+    
+      # Use a given address
+    if(any(str_detect(unmatched[i,]$Address, special$match))){
+      newaddr <- special[str_detect(unmatched[i,]$Address,
+                                    special$match),]$addr
+    }
+    #   Call google
+    
+    latlong <- GetLatLongGoogle( unmatched[i,]$Address, newaddr)
+    if (latlong$status=="success") {
+      print(paste("=======success======="))
+      unmatched[i,]$match_address  <- latlong$match_address
+      unmatched[i,]$lat            <- latlong$lat
+      unmatched[i,]$long           <- latlong$long
+      unmatched[i,]$geocode_status <- "google redo"
+      unmatched[i,]$status         <- latlong$status
+      unmatched[i,]$GType          <- paste(latlong$LocType, latlong$Type)
+    } else if (latlong$status=="Names mismatch"){
+      print(paste("=======fail=======",latlong[1,]))
+      unmatched[i,]$geocode_status <- "redo fail"
+      unmatched[i,]$status         <- latlong$status
+      unmatched[i,]$GType          <- paste(latlong$LocType, latlong$Type)
+      unmatched[i,]$match_address  <- latlong$match_address
+    } else{
+      print(paste("=======fail======="))
+      unmatched[i,]$geocode_status <- "redo fail"
+      unmatched[i,]$status         <- latlong$status
+      unmatched[i,]$GType          <- paste(latlong$LocType, latlong$Type)
+      unmatched[i,]$match_address  <- latlong$match_address
+    }
+  }
+  if ((i+1)%%100 == 0){
+    saveRDS(unmatched, "~/Dropbox/CrimeStats/CensusGeoTable_progress_redo.rds")
+    
+  }
+}
+
+#   Percent of unique addresses found, and percent of total found
+
+unmatched %>% 
+  group_by(geocode_status) %>% 
+  summarise(n=n())
+
+
+```
+
+
+##    Some generated segments are bad
+
+Fix W Loop S Fwy
+    S Sam Houston Pkwy E (7909)
+
+
+
