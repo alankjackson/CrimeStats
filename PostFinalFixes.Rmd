@@ -7,6 +7,13 @@ output: html_document
 
 ```{r setup, include=FALSE}
 library(tidyverse)
+library(stringr)
+library(dplyr)
+library(ggmap)
+library(lubridate)
+library(sf)
+library(nngeo)
+library(units)
 
 #unmatched <- readRDS( "~/Dropbox/CrimeStats/CensusGeoTable_progress.rds")
 
@@ -14,6 +21,7 @@ options(stringsAsFactors = FALSE)
 
 apikey <- readRDS("~/Dropbox/CrimeStats/apikey.rds")
 register_google(key = apikey)
+googlecrs <- 4326
 
 HoustonBdy <- c(-95.789963, 29.518566, -95.005814, 30.117875)
 BoundBox <- "bounds=29.518566,-95.789963|30.117875,-95.005814"
@@ -80,12 +88,25 @@ unmatched[mask,]$status  <- "redo"
 #  ----------  West airport, not airport
 
 mask1 <- grepl("W AIRPORT", unmatched$Address)
-mask2 <- grepl("16E20", unmatched$Beat)
-mask3 <- grepl("16E30", unmatched$Beat)
-mask <- mask1&(mask2|mask3)
+mask2 <- grepl("16E20|16E30", unmatched$Beat)
+mask <- mask1&mask2
 sum(mask)
 
 unmatched[mask,]$status  <- "redo"
+
+#  ----------  airport, not west airport
+
+mask1 <- grepl("W AIRPORT", unmatched$match_address, ignore.case = TRUE)
+mask2 <- grepl("16E10|14D|13D", unmatched$Beat)
+mask <- mask1&mask2
+sum(mask)
+
+
+unmatched[mask,]$Address  <- str_replace(unmatched[mask,]$Address,
+                                          "W AIRPORT",
+                                          "AIRPORT")
+unmatched[mask,]$status  <- "redo"
+
 
 #  ----------  W Loop S
 
@@ -99,12 +120,47 @@ sum(mask)
 
 unmatched[mask,]$status  <- "redo"
 
+mask2 <- grepl("redo fail", unmatched$geocode_status )
+mask <- mask1&mask2
+sum(mask)
+unmatched$Address <- str_replace(unmatched$Address, "W LOOP S FWY ,", 
+                                                    "W LOOP S ,")
+
 #  ----------  S Sam Houston Pkwy E
 
 mask1 <- grepl("S SAM HOUSTON PKWY E", unmatched$Address)
 sum(mask1)
 
 unmatched[mask1,]$status  <- "redo"
+
+#  ----------  Broadway spot
+
+mask1 <- grepl("8399 BROADWAY ", unmatched$Address)
+sum(mask1)
+
+unmatched[mask1,]$Address  <- str_replace(unmatched[mask1,]$Address,
+                                          "BROADWAY ,",
+                                          "BROADWAY ST ,")
+
+unmatched[mask1,]$status  <- "redo"
+
+#  ----------  Bay Area Blvd
+
+mask1 <- grepl("BAY AREA BLVD ", unmatched$Address)
+mask2 <- grepl(" W", unmatched$RawAddress)
+mask3 <- grepl("12D70", unmatched$Beat)
+mask <- mask1&(mask2|mask3)
+sum(mask)
+
+unmatched[mask,]$Address  <- str_replace(unmatched[mask,]$Address,
+                                          "9 BAY AREA BLVD ,",
+                                          "8 W BAY AREA BLVD ,")
+unmatched[mask,]$Address  <- str_replace(unmatched[mask,]$Address,
+                                          "WEST BAY AREA BLVD ,",
+                                          "W BAY AREA BLVD ,")
+
+unmatched[mask,]$status  <- "redo"
+
 
 
 
@@ -240,6 +296,109 @@ check_match <- function(test_Address, testdata){
 
 ```
 
+##    Interpolate
+
+```{r interpolate fwy}
+
+Fwy_interpolate <- function(unmatched, match_str, start, stop) {
+  #   create dataframe of good lat long to interpolate with 
+  dfstart <- 
+    filter(status=="success") %>% 
+    filter(grepl(tolower(match_str), tolower(match_address))) %>% 
+    select(match_address, lat, long) %>%
+    mutate(addr=as.numeric(str_extract(match_address, "^[0-9]+"))) %>% 
+    unique() %>% 
+    arrange(addr) 
+    
+  #   Create points to interpolate to
+  dftargets <- seq(start,stop,by=100)
+  
+  # interpolate
+  newlat <- approx(dfstart$addr, dfstart$lat, dftargets)
+  newlon <- approx(dfstart$addr, dfstart$long, dftargets)
+  
+  #   Create a new dataframe with all "addresses" in it
+  generated <- tibble(addr=newlat$x, lat=newlat$y, long=newlon$y) %>% 
+    mutate(Address=paste0(as.character(addr-50),"-",
+                          as.character(addr+49),
+                          paste0(" ",toupper(match_str), " , Houston , TX"))) %>% 
+    mutate(Beat=NA, n=0, geocode_status="generated", 
+           match_address=paste0(as.character(addr)," ",match_str, ", Houston, TX"),
+           tract=NA, block=NA, status="success") %>% 
+    select(Address:match_address,lat, long, tract, block, status)
+  return(generated)
+}
+
+
+katy <- Fwy_interpolate(unmatched, "Katy Fwy", 250, 21850)
+northfwy <- Fwy_interpolate(unmatched, "North Fwy", 150, 17150)
+eastex <- Fwy_interpolate(unmatched, "Eastex Fwy", 950, 26050)
+NSamE <- Fwy_interpolate(unmatched, "N SAM HOUSTON PKWY E", 50, 9850)
+SSamE <- Fwy_interpolate(unmatched, "S SAM HOUSTON PKWY E", 3550, 12450)
+ESamS <- Fwy_interpolate(unmatched, "EAST SAM HOUSTON PKWY S", 5450, 7950)
+SSamW <- Fwy_interpolate(unmatched, "S SAM HOUSTON PKWY W", 650, 12650)
+WSamS <- Fwy_interpolate(unmatched, "W SAM HOUSTON PKWY S", 50, 10650)
+Gulf <- Fwy_interpolate(unmatched, "GULF FWY", 550, 21750)
+SouthFwy <- Fwy_interpolate(unmatched, "SOUTH FWY", 2200, 13850)
+SWFwy <- Fwy_interpolate(unmatched, "SOUTHWEST FWY", 50, 14150)
+Blackhawk <- Fwy_interpolate(unmatched, "BLACKHAWK BLVD", 8450, 9850)
+WestheimPkwy <- Fwy_interpolate(unmatched, "WESTHEIMER PKWY", 15050, 25850)
+WOrem <- Fwy_interpolate(unmatched, "W OREM DR", 1250, 8050)
+WLoopS <- Fwy_interpolate(unmatched, "W LOOP S FWY", 150, 9550)
+SLoopE <- Fwy_interpolate(unmatched, "S LOOP E FWY", 150, 8850)
+SLoopW <- Fwy_interpolate(unmatched, "S LOOP W", 150, 8750)
+ELoopN <- Fwy_interpolate(unmatched, "E LOOP N FWY", 150, 3350)
+EastFwy <- Fwy_interpolate(unmatched, "EAST FWY", 1150, 13650)
+Kingwood <- Fwy_interpolate(unmatched, "KINGWOOD DR", 150, 19750)
+BarkClod <- Fwy_interpolate(unmatched, "BARKER-CLODINE RD", 150, 19750)
+WLakeHouPkwy <- Fwy_interpolate(unmatched, "W LAKE HOUSTON PKWY", 50, 16750)
+ScottSt <- Fwy_interpolate(unmatched, "SCOTT ST", 10050, 13550)
+NWayside <- Fwy_interpolate(unmatched, "N WAYSIDE DR", 250, 11050)
+EOrem <- Fwy_interpolate(unmatched, "E OREM DR", 3950, 7650)
+WBellAve <- Fwy_interpolate(unmatched, "W BELLFORT AVE", 1550, 11750)
+
+#generated <- bind_rows(katy, northfwy, eastex, NSamE, SSamE,
+#                       ESamS, SSamW, WSamS, Gulf, SouthFwy,
+#                       SWFwy, Blackhawk) 
+generated <- bind_rows(generated, WBellAve) 
+generated <- unique(generated)
+
+#---------------------------------------
+#   E LOOP FWY is special
+
+ELoop <- tribble(
+  ~match_address, ~lat, ~long,
+  "100 E LOOP FWY , Houston , TX",  29.726086, -95.266590,
+  "1000 E LOOP FWY , Houston , TX", 29.738317, -95.265317,
+  "3200 E LOOP FWY , Houston , TX", 29.769695, -95.265270
+) %>%
+  mutate(addr=as.numeric(str_extract(match_address, "^[0-9]+"))) %>% 
+  unique() %>% 
+  arrange(addr) 
+#   Create points to interpolate to
+dftargets <- seq(150,3150,by=100)
+
+# interpolate
+newlat <- approx(ELoop$addr, ELoop$lat, dftargets)
+newlon <- approx(ELoop$addr, ELoop$long, dftargets)
+
+#   Create a new dataframe with all "addresses" in it
+newELoop <- tibble(addr=newlat$x, lat=newlat$y, long=newlon$y) %>% 
+  mutate(Address=paste0(as.character(addr-50),"-",
+                        as.character(addr+49),
+                        paste0(" ",toupper("E LOOP FWY"), " , Houston , TX"))) %>% 
+  mutate(Beat=NA, n=0, geocode_status="generated", 
+         match_address=paste0(as.character(addr)," ","E Loop Fwy", ", Houston, TX"),
+         tract=NA, block=NA, status="success") %>% 
+  select(Address:match_address,lat, long, tract, block, status)
+#---------------------------------------
+
+#generated <- bind_rows(generated, newELoop) 
+
+saveRDS(generated, "~/Dropbox/CrimeStats/Generated_Coordinates.rds")
+
+```
+
 ##   manual points
 
 ```{r manual}
@@ -265,7 +424,13 @@ specific <- tribble(
   "10600-10699", "South Dr", "10650", 29.667078, -95.567243, "Houston, TX 77099",
   "10700-10799", "South Dr", "10750", 29.667078, -95.567243, "Houston, TX 77099",
   "10300-10399", "South Dr", "10350", 29.667138, -95.561327, "Houston, TX 77099",
-  "5600-5699", "Hollister St", "5650", 29.847883, -95.506000, "Houston, TX 77040"
+  "5600-5699", "Hollister St", "5650", 29.847883, -95.506000, "Houston, TX 77040",
+  "4400-4499", "W AIRPORT BLVD", "4450", 29.641152, -95.445227, "Houston, TX 77045",
+  "4300-4399", "W AIRPORT BLVD", "4350", 29.641610, -95.443444, "Houston, TX 77045",
+  "4200-4299", "W AIRPORT BLVD", "4250", 29.642281, -95.442003, "Houston, TX 77045",
+  "4100-4199", "W AIRPORT BLVD", "4150", 29.642771, -95.440276, "Houston, TX 77045",
+  "4000-4099", "W AIRPORT BLVD", "4010", 29.642832, -95.439407, "Houston, TX 77045",
+  "5100-5199", "W LOOP S", "5150", 29.727180, -95.460354, "Houston, TX 77056"
 )
 
 for (i in 1:nrow(specific)) {
@@ -395,6 +560,29 @@ GetLatLongGoogle <- function(address, newaddr){
 
 ```
 
+##    function to calculate distance from point to beat
+
+```{r jumptothebeat}
+
+Beats <- read_sf('/home/ajackson/Dropbox/CrimeStats/BeatPolys/Houston_Police_Beats.shp')
+
+#     test data
+long <-  -95.3865378
+lat  <-   29.6436889
+beat <- "19G50"
+
+jumptothebeat <- function(lat, long, beat){
+  
+  temp <- tribble(~lat, ~long, lat, long) %>% 
+    st_as_sf(coords=c("long", "lat"),
+                    crs=googlecrs, agr = "identity")
+  
+  Beats %>% filter(Beats==beat) %>% 
+     st_distance(temp, by_element = TRUE)
+}
+```
+
+
 ```{r run google}
 
 unmatched2 <- unmatched
@@ -405,10 +593,44 @@ special <- tribble(
   "12499 SOUTH DR",          "31",
   "12399 SOUTH DR",          "35",
   "12199 SOUTH DR",          "03",
+  "7499 HOLLISTER ST",       "25",
+  "8399 BROADWAY ST",        "26",
+  "3599 W AIRPORT",          "06",
+  "3499 W AIRPORT",          "30",
+  "3399 W AIRPORT",          "39",
+  "1899 AIRPORT",            "42",
+  "1999 AIRPORT",            "90",
+  "7599 SOUTH FWY",          "47",
+  "7699 SOUTH FWY",          "41",
+  "9199 SOUTH FWY",          "00",
+  "12699 SOUTH FWY",         "02",
+  "12799 SOUTH FWY",         "51",
+  "12999 SOUTH FWY",         "62",
+  "13099 SOUTH FWY",         "91",
+  "13199 SOUTH FWY",         "10",
+  "13499 SOUTH FWY",         "19",
+  "13899 SOUTH FWY",         "22",
+  "1599 W BAY AREA",         "05",
+  "1899 W BAY AREA",         "55",
+  "1499 W BAY AREA",         "53",
+  "1799 W BAY AREA",         "35",
+  "1399 W BAY AREA",         "33",
+  "7999 S SAM HOUSTON PKWY E","09",
+  "5499 W LOOP S ",          "10",
+  "8799 W LOOP S ",          "05",
+  "8599 W LOOP S ",          "15",
+  "5699 W LOOP S ",          "01",
+  "1499 W LOOP S ",          "49",
+  "1399 W LOOP S ",          "33",
+  "1299 W LOOP S ",          "33",
+  "1199 W LOOP S ",          "77",
+  "5599 W LOOP S ",          "05",
+  "5399 W LOOP S ",          "45",
   "CENTRAL GREEN BLVD",      "00"
 )
 
-onlys <- c("SOUTH DR")
+onlys <- c("SOUTH FWY", "BAY AREA BLVD", "AIRPORT BLVD")
+onlys <- c("W LOOP S")
 
 ##########################################
 ##    next spin through data geocoding
@@ -420,7 +642,7 @@ trys <- 0
 for (i in begin:nrow(unmatched)) {
   if (i==begin){starttime <- now()}
   if (unmatched[i,]$status=="redo" |
-      unmatched[1,]$geocode_status=="redo fail"){ 
+      unmatched[i,]$geocode_status=="redo fail"){ 
     
     # only do selected cases
     if (!any(str_detect(unmatched[i,]$Address, onlys))){next()}
@@ -439,12 +661,12 @@ for (i in begin:nrow(unmatched)) {
     #  print("found previous match in archive")
     #  next
     #}
-    a <- check_match(unmatched[i,]$Address, unmatched)
-    if (is_tibble(a)) {
-      unmatched[i,4:10] <- a[1,4:10]
-      print("found previous match in current")
-      next
-    }
+    #a <- check_match(unmatched[i,]$Address, unmatched)
+    #if (is_tibble(a)) {
+    # unmatched[i,4:10] <- a[1,4:10]
+    #  print("found previous match in current")
+    #  next
+    #}
 
       # pick a random address to try
     newaddr <- str_pad(as.character(sample(0:50, 1)),2,pad="0")
@@ -458,6 +680,9 @@ for (i in begin:nrow(unmatched)) {
     
     latlong <- GetLatLongGoogle( unmatched[i,]$Address, newaddr)
     if (latlong$status=="success") {
+      unmatched[i,]$distance <- jumptothebeat(latlong$lat, 
+                                latlong$long, 
+                                unmatched[i,]$Beat)
       print(paste("=======success======="))
       unmatched[i,]$match_address  <- latlong$match_address
       unmatched[i,]$lat            <- latlong$lat
