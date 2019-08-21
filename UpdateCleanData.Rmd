@@ -14,6 +14,8 @@ options(stringsAsFactors = FALSE)
 
 Dictionary <- readRDS("~/Dropbox/CrimeStats/StreetDictionary.rds")
 
+HoustonBoundary <- c(-95.789963, 29.518566, -95.005814, 30.117875)
+
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
@@ -114,7 +116,10 @@ df <- applyregex(df, "NewAddress", dict)
 
 #   If address contains an "UNK" then set status to "incomplete"
 
-
+df <-  df %>% 
+  mutate(status=if_else(grepl("^UNK ", NewAddress ), 
+                "incomplete", 
+                ""))
 
 ```
 

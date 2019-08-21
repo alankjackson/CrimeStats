@@ -337,6 +337,10 @@ getlatlong <- function(addr, beat){
   ))
   
 }
+```
+
+```{r do work}
+
 
 #####################################
 ##    spin through data geocoding

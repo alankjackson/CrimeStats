@@ -36,7 +36,7 @@ been done.
 # then clear up to only unique values and split each record in two, one for each
 # end of the block. Output will be a datafile of keys and addresses.
 
-df = readRDS("~/Dropbox/CrimeStats/District20gCleanData.rds")
+df = readRDS("~/Dropbox/CrimeStats/District19gCleanData.rds")
 geotable <- readRDS("~/Dropbox/CrimeStats/GeoTableCen.rds")
 
 types <- sort(unique(df$Type))

@@ -490,50 +490,50 @@ unmatched <- special_case(unmatched,
                 29.763081,
                 -95.442344)
 
-mask <- grepl("7\\d{3} MEMORIAL DR", unmatched$Address)
+mask <- grepl("-7\\d{3} MEMORIAL DR", unmatched$Address)
 unmatched <- special_case(unmatched, 
                 mask,
                 "7500 Memorial Dr, Houston, TX 77007, USA",
                 29.766523,
                 -95.442661)
 
-mask <- grepl("199 E MEMORIAL LOOP DR", unmatched$Address)
+mask <- grepl("-199 E MEMORIAL LOOP DR", unmatched$Address)
 unmatched <- special_case(unmatched, 
                 mask,
                 "150 E Memorial Loop Dr, Houston, TX 77007, USA",
                 29.764794,
                 -95.431154)
 
-mask <- grepl("68\\d{2} MEMORIAL DR", unmatched$Address)
+mask <- grepl("-68\\d{2} MEMORIAL DR", unmatched$Address)
 unmatched <- special_case(unmatched, 
                 mask,
                 "6850 Memorial Dr, Houston, TX 77007, USA",
                 29.765306,
                 -95.432661)
 
-mask <- grepl("2499 KATY FWY", unmatched$Address)
+mask <- grepl("-2499 KATY FWY", unmatched$Address)
 unmatched <- special_case(unmatched, 
                 mask,
                 "2450 Katy Fwy, Houston, TX 77007, USA",
                 29.776653,
                 -95.386089)
 
-mask <- grepl("6[12]\\d{2} HERMANN PARK DR", unmatched$Address)
+mask <- grepl("-6[12]\\d{2} HERMANN PARK DR", unmatched$Address)
 unmatched <- special_case(unmatched, 
                 mask,
                "6200 Hermann Park Dr, Houston, TX 77030, USA",
                 29.715294,
                 -95.389267)
 
-mask <- grepl("5999 HERMANN PARK DR", unmatched$Address) |
-        grepl("6099 HERMANN PARK DR", unmatched$Address) 
+mask <- grepl("-5999 HERMANN PARK DR", unmatched$Address) |
+        grepl("-6099 HERMANN PARK DR", unmatched$Address) 
 unmatched <- special_case(unmatched, 
                 mask,
                "6000 Hermann Park Dr, Houston, TX 77030, USA",
                 29.719581,
                 -95.388151)
 
-mask <- grepl("5599 HERMANN PARK DR", unmatched$Address) 
+mask <- grepl("-5599 HERMANN PARK DR", unmatched$Address) 
 unmatched <- special_case(unmatched, 
                 mask,
                 "5555 Hermann Park Dr, Houston, TX 77030, USA",
@@ -1003,6 +1003,10 @@ for (i in begin:nrow(unmatched)) {
     ####if (mask[i]==FALSE){next()}
     # only do selected cases
     #if (!any(str_detect(unmatched[i,]$Address, onlys))){next()}
+    # only do google fails
+    if (unmatched[i,]$geocode_status!="google fail"){next()}
+    # only do those with a block number
+    if (is.na(unmatched[i,]$block)){next()}
     trys <- trys + 1
     print(paste("--->",i,unmatched[i,1], 
                 now()+((now()-starttime)/trys)*(nrow(unmatched)-i)
@@ -1435,6 +1439,7 @@ for (i in begin:nrow(unmatched)) {
 old <- readRDS("~/Dropbox/CrimeStats/CensusGeoTable_progress.rds")
 
 new <- bind_rows(old, unmatched) %>% unique()
+new <- unmatched %>% unique()
 
 saveRDS(new, "~/Dropbox/CrimeStats/CensusGeoTable_progress.rds")
 

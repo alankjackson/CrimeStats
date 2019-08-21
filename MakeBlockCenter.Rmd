@@ -177,7 +177,10 @@ testgeocode <- function(x){
 
 ffnew <- ff[is.na(ff$match),] # grab only rows with no match
 ffnew <- ffnew[!duplicated(ffnew$NewAddress),] # get rid of duplicates
-
+#   initialize dfgoogle first time through with new columns
+ffnew$type <- NA
+ffnew$StreetName <- NA
+ffnew$LocType <- NA
 #--------------  repeat from here
 
 geocodeQueryCheck()
@@ -193,7 +196,9 @@ zero = 0
 query = 0
 numb = 0
 for (i in 1:limit) {
-  AllLatLong <- geocode(ffnew$InputAddress[mask1][i], output="all") # geocode addresses
+  if (is.na(ffnew$NewAddress[mask1][i])){next}
+  print(ffnew$NewAddress[mask1][i])
+  AllLatLong <- geocode(ffnew$NewAddress[mask1][i], output="all") # geocode addresses
   numb <- numb + 1
   print(paste("----> ",numb," ",limit-numb))
   #latlongs <- map_df(AllLatLong, getfields) # extract desired fields
@@ -201,9 +206,9 @@ for (i in 1:limit) {
   
   ffnew$lon[mask1][i] = latlongs$Longitude
   ffnew$lat[mask1][i] = latlongs$Latitude
-  ffnew$type[mask1][i] = latlongs$types
   ffnew$StreetName[mask1][i] = latlongs$StreetName
   ffnew$LocType[mask1][i] = latlongs$LocType
+  ffnew$type[mask1][i] = latlongs$types
   
   #testgeocode(AllLatLong)
   if(length(AllLatLong$results)==0){
@@ -225,6 +230,15 @@ save.image()
 #   Save temporary results
 
 saveRDS(ffnew, file="~/Dropbox/CrimeStats/ffnew.rds")
+
+```
+
+##    QC data - look for values outside of area, or where distance between
+##    nearby values is large.
+
+```{r QC results}
+
+
 
 ```
 
