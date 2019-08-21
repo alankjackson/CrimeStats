@@ -1,0 +1,31 @@
+Plans
+
+
+- Make geocoding file
+   - blank out generated locations and then add back
+   - intersect unmatched with:
+      - zipcode
+      - census tract
+      - neighborhood
+  - end up with Address, Beat, Match_address, Lat, Long, Tract. Block, Zip, Neighborhood
+     Source (census, google, manual, generated), Status (success, failed)
+     
+  - Make neural net training set (similar but also include raw address)
+  
+- Build geocoding package
+   - use file from above
+   - add in census and google code as well
+   
+- Geocode current set of crime data
+
+- Analysis
+
+- Shiny app
+
+- train neural net for street corrections
+
+- read in newer crime data
+
+- clean up and geocode
+
+- redo analysis with full data
