@@ -219,6 +219,21 @@ sum(mask1)
 unmatched[mask1,]$geocode_status  <- "redo"
 unmatched[mask1,]$status  <- "redo"
 
+#  ----------  Convert some S Loop E to South Fwy (oopsie)
+
+mask1 <- grepl("S LOOP E", unmatched$Address)
+sum(mask1)
+# addresses > 8500
+mask2 <- as.integer(str_extract(unmatched$Address, "\\d+"))>=8600
+sum(mask2)
+mask <- mask1&mask2
+sum(mask)
+
+unmatched[mask,]$Address  <- str_replace(unmatched[mask,]$Address, "S LOOP E", "SOUTH")
+unmatched[mask,]$geocode_status  <- "redo"
+unmatched[mask,]$status  <- "redo"
+
+
 
 #  ----------  North Fwy
 
@@ -310,6 +325,17 @@ sum(mask1&!mask2)
 
 unmatched[mask1&!mask2,]$geocode_status  <- "redo"
 unmatched[mask1&!mask2,]$status  <- "redo"
+
+#  ----------  W Bellfort Ave
+
+mask1 <- grepl("W BELLFORT AVE", unmatched$Address)
+sum(mask1)
+mask2 <- grepl("manual", unmatched$geocode_status)
+sum(mask1&!mask2)
+
+unmatched[mask1&!mask2,]$geocode_status  <- "redo"
+unmatched[mask1&!mask2,]$status  <- "redo"
+
 
 
 
@@ -1268,7 +1294,7 @@ for (i in begin:nrow(unmatched)) {
 
 ```{r Save intermediate finals}
 
-saveRDS(unmatched, "~/Dropbox/CrimeStats/GeoTable_03Aug2019.rds")
+saveRDS(unmatched, "~/Dropbox/CrimeStats/GeoTable_19Aug2019.rds")
 
 unmatched <- readRDS("~/Dropbox/CrimeStats/GeoTable_03Aug2019.rds")
 ```
