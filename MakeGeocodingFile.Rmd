@@ -1,0 +1,83 @@
+---
+title: "MakeGeocodingFile"
+author: "Alan Jackson"
+date: "8/4/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(stringr)
+library(dplyr)
+
+options(stringsAsFactors = FALSE)
+
+geotable <- readRDS("~/Dropbox/CrimeStats/GeoTable_19Aug2019.rds")
+
+generated <- readRDS("~/Dropbox/CrimeStats/Generated_Coordinates.rds")
+
+```
+
+## Make geocoding file
+
+  * blank out generated locations and then add back
+   
+  * intersect unmatched with:
+      + zipcode
+      + census tract
+      + neighborhood
+  * end up with Address, Beat, Match_address, Lat, Long, Tract. Block, Zip, Neighborhood
+     Source (census, google, manual, generated), Status (success, failed, impossible)
+     
+  * Make neural net training set (similar but also include raw address)
+
+
+```{r add generated locations}
+
+#####   check_match
+check_match <- function(test_Address, testdata){
+    # Did I already succeed at this match somewhere?
+    a <- testdata %>% filter(test_Address == Address,
+                              status=="success" )
+    if (nrow(a)>0){
+      return(a)
+    } else {return(FALSE)}
+}
+
+#   usage:
+#   a <- check_match(unmatched[i,], previous_match)
+#   if (is_tibble(a)) {unmatched[i,4:10] <- a[1,4:10]
+#      print("found previous match")}
+
+####   Spin through file
+for (i in begin:nrow(unmatched)) {
+  
+  # first blank out generated data, in case it is bogus
+  
+  if(unmatched[i,]$geocode_status == "generated") {
+    unmatched[i,]$lat <- NA
+    unmatched[i,]$long <- NA
+    unmatched[i,]$geocode_status <- "redo"
+    unmatched[i,]$status <- "redo"
+    print(paste("-- clear -->",unmatched[i,]$Address))
+    
+  }
+
+  if(unmatched[i,]$geocode_status!="manual" &
+     unmatched[i,]$geocode_status!="manual redo") {
+    a <- check_match(unmatched[i,]$Address, generated)
+    if (is_tibble(a)) {
+      unmatched[i,6:7] <- a[1,2:3]
+      unmatched[i,]$geocode_status <- "generated"
+      print(paste("-- update -->",unmatched[i,]$Address))
+      next
+    }
+  }
+}
+
+
+
+```
+
