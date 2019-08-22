@@ -55,12 +55,13 @@ check_match <- function(test_Address, testdata){
 
 generated$Address <- str_replace(generated$Address, "  ", " ")
 unmatched$Address <- str_replace(unmatched$Address, "n,", "n ,")
+unmatched$Address <- str_replace(unmatched$Address, "9\\([A-Z]\\)", "9 \\1")
 
 # change manual redo to manual (what did I do that for anyway?)
 
 unmatched$geocode_status <- str_replace(unmatched$geocode_status, "manual redo", "manual")
 
-####   Spin through file
+####   Spin through file and match generated
 for (i in begin:nrow(unmatched)) {
   
   # first blank out generated data, in case it is bogus
@@ -86,9 +87,28 @@ for (i in begin:nrow(unmatched)) {
   }
 }
 
+####   Spin through file and match against self
+for (i in begin:nrow(unmatched)) {
+  
+  if(grepl("redo", unmatched[i,]$geocode_status)){ 
+    a <- check_match(unmatched[i,]$Address, unmatched)
+    if (is_tibble(a)) {
+      unmatched[i,4:10] <- a[1,4:10]
+      print(paste("-- update -->",unmatched[i,]$Address))
+      next
+    }
+  }
+}
+
+
 # summary of some fields
 
 sort(unique(unmatched$geocode_status))
+sort(unique(unmatched$status))
+
+# Save file
+
+readRDS(unmatched, "~/Dropbox/CrimeStats/GeoTable_22Aug2019_withgen.rds")
 
 ```
 
