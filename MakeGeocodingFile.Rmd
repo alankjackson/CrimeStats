@@ -24,7 +24,7 @@ generated <- readRDS("~/Dropbox/CrimeStats/Generated_Coordinates.rds")
 
   * blank out generated locations and then add back
    
-  * intersect unmatched with:
+  * intersect geotable with:
       + zipcode
       + census tract
       + neighborhood
@@ -47,54 +47,54 @@ check_match <- function(test_Address, testdata){
 }
 
 #   usage:
-#   a <- check_match(unmatched[i,], previous_match)
-#   if (is_tibble(a)) {unmatched[i,4:10] <- a[1,4:10]
+#   a <- check_match(geotable[i,], previous_match)
+#   if (is_tibble(a)) {geotable[i,4:10] <- a[1,4:10]
 #      print("found previous match")}
 
-#   fix double blank in generated filend missing blank in unmatched
+#   fix double blank in generated filend missing blank in geotable
 
 generated$Address <- str_replace(generated$Address, "  ", " ")
-unmatched$Address <- str_replace(unmatched$Address, "n,", "n ,")
-unmatched$Address <- str_replace(unmatched$Address, "9\\([A-Z]\\)", "9 \\1")
+geotable$Address <- str_replace(geotable$Address, "n,", "n ,")
+geotable$Address <- str_replace(geotable$Address, "9\\([A-Z]\\)", "9 \\1")
 
 # change manual redo to manual (what did I do that for anyway?)
 
-unmatched$geocode_status <- str_replace(unmatched$geocode_status, "manual redo", "manual")
+geotable$geocode_status <- str_replace(geotable$geocode_status, "manual redo", "manual")
 
 ####   Spin through file and match generated
-for (i in begin:nrow(unmatched)) {
+for (i in begin:nrow(geotable)) {
   
   # first blank out generated data, in case it is bogus
   
-  if(unmatched[i,]$geocode_status == "generated") {
-    unmatched[i,]$lat <- NA
-    unmatched[i,]$long <- NA
-    unmatched[i,]$geocode_status <- "redo"
-    unmatched[i,]$status <- "redo"
-    print(paste("-- clear -->",unmatched[i,]$Address))
+  if(geotable[i,]$geocode_status == "generated") {
+    geotable[i,]$lat <- NA
+    geotable[i,]$long <- NA
+    geotable[i,]$geocode_status <- "redo"
+    geotable[i,]$status <- "redo"
+    print(paste("-- clear -->",geotable[i,]$Address))
     
   }
 
-  if(unmatched[i,]$geocode_status!="manual"){ 
-    a <- check_match(unmatched[i,]$Address, generated)
+  if(geotable[i,]$geocode_status!="manual"){ 
+    a <- check_match(geotable[i,]$Address, generated)
     if (is_tibble(a)) {
-      unmatched[i,6:7] <- a[1,2:3]
-      unmatched[i,]$geocode_status <- "generated"
-      unmatched[i,]$status <- "success"
-      print(paste("-- update -->",unmatched[i,]$Address))
+      geotable[i,6:7] <- a[1,2:3]
+      geotable[i,]$geocode_status <- "generated"
+      geotable[i,]$status <- "success"
+      print(paste("-- update -->",geotable[i,]$Address))
       next
     }
   }
 }
 
 ####   Spin through file and match against self
-for (i in begin:nrow(unmatched)) {
+for (i in begin:nrow(geotable)) {
   
-  if(grepl("redo", unmatched[i,]$geocode_status)){ 
-    a <- check_match(unmatched[i,]$Address, unmatched)
+  if(grepl("redo", geotable[i,]$geocode_status)){ 
+    a <- check_match(geotable[i,]$Address, geotable)
     if (is_tibble(a)) {
-      unmatched[i,4:10] <- a[1,4:10]
-      print(paste("-- update -->",unmatched[i,]$Address))
+      geotable[i,4:10] <- a[1,4:10]
+      print(paste("-- update -->",geotable[i,]$Address))
       next
     }
   }
@@ -103,12 +103,12 @@ for (i in begin:nrow(unmatched)) {
 
 # summary of some fields
 
-sort(unique(unmatched$geocode_status))
-sort(unique(unmatched$status))
+sort(unique(geotable$geocode_status))
+sort(unique(geotable$status))
 
 # Save file
 
-readRDS(unmatched, "~/Dropbox/CrimeStats/GeoTable_22Aug2019_withgen.rds")
+saveRDS(geotable, "~/Dropbox/CrimeStats/GeoTable_22Aug2019_withgen.rds")
 
 ```
 
