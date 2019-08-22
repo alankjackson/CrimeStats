@@ -8,7 +8,7 @@ Plans
       - census tract
       - neighborhood
   - end up with Address, Beat, Match_address, Lat, Long, Tract. Block, Zip, Neighborhood
-     Source (census, google, manual, generated), Status (success, failed)
+     Source (census, google, manual, generated), Status (success, failed, impossible)
      
   - Make neural net training set (similar but also include raw address)
   
