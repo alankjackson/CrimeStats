@@ -11,6 +11,13 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(stringr)
 library(dplyr)
+library(ggmap)
+library(rgeos)
+library(sf)
+library(lwgeom)
+
+googleproj4 <- "+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext  +no_defs"
+googlecrs <- 4326
 
 options(stringsAsFactors = FALSE)
 
@@ -28,8 +35,9 @@ generated <- readRDS("~/Dropbox/CrimeStats/Generated_Coordinates.rds")
       + zipcode
       + census tract
       + neighborhood
+  * clean up status field to be more sensible
   * end up with Address, Beat, Match_address, Lat, Long, Tract. Block, Zip, Neighborhood
-     Source (census, google, manual, generated), Status (success, failed, impossible)
+     Source (census, google, manual, generated), Status (success, failed, impossible, out of range, outside boundary)
      
   * Make neural net training set (similar but also include raw address)
 
@@ -111,4 +119,47 @@ sort(unique(geotable$status))
 saveRDS(geotable, "~/Dropbox/CrimeStats/GeoTable_22Aug2019_withgen.rds")
 
 ```
+
+## Intersect geotable with zipcodes
+
+Read in a file of local zipcode boundaries and intersect with
+geotable, and add the zip code to the table.
+
+
+```{r zipcodes}
+
+# read in previously created zipcode polygon file
+
+ziplatlong <- readRDS("~/Dropbox/CrimeStats/ZipCodes.rds")
+
+####   mask out rows with bad coordinates
+maskcoord <- !(is.na(geotable$lat) | is.na(geotable$long))
+sum(maskcoord)
+maskcoord <- maskcoord & !grepl("fail", geotable$geocode_status)
+sum(maskcoord)
+#  Create a temporary sf data frame for doing the intersects
+# set longitudes as the first column and latitudes as the second
+dat <- data.frame(Longitude=geotable$long[maskcoord], Latitude=geotable$lat[maskcoord], Address=geotable$Address[maskcoord], stringsAsFactors = FALSE)
+
+dat <- st_as_sf(dat, coords=c("Longitude", "Latitude"), crs=googlecrs, agr = "identity")
+
+#   find points in polygons
+#   since zipcodes don't overlap, let's just grab the array index
+#   instead of creating a huge matrix
+a <- st_intersects(dat, ziplatlong, sparse = TRUE)
+
+#   Append the ZIP field to the data frame
+geotable$Zip_Code[maskcoord] <- ziplatlong$Zip_Code[unlist(a)]
+
+saveRDS(geotable, "~/Dropbox/CrimeStats/GeoTable_temp_22Aug2019.rds")
+```
+
+## Add census tract and block
+
+
+
+```{r census tract}
+
+```
+
 
