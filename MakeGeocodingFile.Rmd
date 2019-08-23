@@ -156,10 +156,82 @@ saveRDS(geotable, "~/Dropbox/CrimeStats/GeoTable_temp_22Aug2019.rds")
 
 ## Add census tract and block
 
+Use previously generated dataset with census blocks
 
 
 ```{r census tract}
 
+# polygons for Harris and surrounding counties
+CensusHou <- readRDS("~/Dropbox/CrimeStats/HouCensusPolys.rds")
+
+#   look for problems
+sum(!st_is_valid(CensusHou))
+#   find points in polygons
+a <- st_intersects(dat, CensusHou, sparse = TRUE)
+badpoints <- grep(" ",a) # bad points where apparently census blocks overlap
+d <- CensusHou %>% select(NAME10)
+plot(d[unlist(a[badpoints[7]]),], axes=TRUE, key.pos=NULL)
+
+for (i in 1:length(badpoints)) {
+  a[[badpoints[i]]] <- a[[badpoints[i]]][1]
+}
+# Find and fix points where there was a miss
+idx <- !(sapply(a, length)) # where are they?
+sum(idx)
+a[idx] <- NA
+#   add county, census tract and block number to data
+geotable$CountyFIP[maskcoord] <- CensusHou$COUNTYFP10[unlist(a)]
+geotable$CensusTract[maskcoord] <- CensusHou$TRACTCE10[unlist(a)]
+geotable$CensusBlock[maskcoord] <- CensusHou$BLOCKCE10[unlist(a)]
+
+# Do the new blocks match the old ones?
+
+temp <- 
+geotable %>% 
+  filter(!is.na(block)) %>% 
+  filter(geocode_status=="census") %>% 
+  filter(block != CensusBlock) %>% 
+  select(Address, Beat, n, lat, long, tract, block, CountyFIP, CensusTract, CensusBlock)
+
+#############################
+#####   save GeoTable   #####
+#############################
+
+saveRDS(geotable, "~/Dropbox/CrimeStats/GeoTable_temp_23Aug2019.rds")
+
 ```
+
+##   add neighborhood field
+
+```{r neighborhood}
+
+#   Read cleaned neighborhood polygon file
+
+nbhd <- readRDS("~/Dropbox/CrimeStats/NeighborhoodPolys.rds")
+
+#   collect all the neighborhoods a point falls into, make a list,
+#   and put into the Nbhd field
+
+# st_intersects to see if points are inside poly
+#  This is a matrix of T/F values, npoints x npolys in size
+#  if a point is in multiple polys it will show up here
+a <- st_intersects(dat, nbhd, sparse = FALSE)
+max(rowSums(a)) # this is the maximum number of polys for some point
+hist(rowSums(a))# just curious how they are distributed.
+
+diddle <- function (i) {nbhd$Name[i]}
+
+geotable$Nbhd[maskcoord] <-  apply(a,1,diddle)  #  work on "a" row-wise
+
+#   Clean up unknown neighborhoods and clarify what we are using
+
+geotable$Nbhd[geotable$Nbhd=="character(0)"] <- NA
+
+names(geotable)[names(geotable) == 'Nbhd'] <- 'Wikimapia_Nbhd'
+
+saveRDS(geotable, "~/Dropbox/CrimeStats/GeoTable_temp_23Aug2019.rds")
+
+```
+
 
 
