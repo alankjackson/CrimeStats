@@ -118,6 +118,17 @@ sort(unique(geotable$status))
 
 saveRDS(geotable, "~/Dropbox/CrimeStats/GeoTable_22Aug2019_withgen.rds")
 
+####   mask out rows with bad coordinates
+maskcoord <- !(is.na(geotable$lat) | is.na(geotable$long))
+sum(maskcoord)
+maskcoord <- maskcoord & !grepl("fail", geotable$geocode_status)
+sum(maskcoord)
+#  Create a temporary sf data frame for doing the intersects
+# set longitudes as the first column and latitudes as the second
+dat <- data.frame(Longitude=geotable$long[maskcoord], Latitude=geotable$lat[maskcoord], Address=geotable$Address[maskcoord], stringsAsFactors = FALSE)
+
+dat <- st_as_sf(dat, coords=c("Longitude", "Latitude"), crs=googlecrs, agr = "identity")
+
 ```
 
 ## Intersect geotable with zipcodes
@@ -131,17 +142,6 @@ geotable, and add the zip code to the table.
 # read in previously created zipcode polygon file
 
 ziplatlong <- readRDS("~/Dropbox/CrimeStats/ZipCodes.rds")
-
-####   mask out rows with bad coordinates
-maskcoord <- !(is.na(geotable$lat) | is.na(geotable$long))
-sum(maskcoord)
-maskcoord <- maskcoord & !grepl("fail", geotable$geocode_status)
-sum(maskcoord)
-#  Create a temporary sf data frame for doing the intersects
-# set longitudes as the first column and latitudes as the second
-dat <- data.frame(Longitude=geotable$long[maskcoord], Latitude=geotable$lat[maskcoord], Address=geotable$Address[maskcoord], stringsAsFactors = FALSE)
-
-dat <- st_as_sf(dat, coords=c("Longitude", "Latitude"), crs=googlecrs, agr = "identity")
 
 #   find points in polygons
 #   since zipcodes don't overlap, let's just grab the array index
@@ -232,6 +232,29 @@ names(geotable)[names(geotable) == 'Nbhd'] <- 'Wikimapia_Nbhd'
 saveRDS(geotable, "~/Dropbox/CrimeStats/GeoTable_temp_23Aug2019.rds")
 
 ```
+
+##  add super neighborhoods
+
+```{r super neighborhoods}
+
+temp <- readRDS("~/Dropbox/CrimeStats/SuperNeighborhoodPolys.rds")
+#   find points in polygons
+#   since superneighborhoods don't overlap, let's just grab the array index
+#   instead of creating a huge matrix
+a <- st_intersects(dat, temp, sparse = TRUE)
+
+# Replace empty values with 89
+a <- unlist(replace(a, !sapply(a, length),89))
+# Now add super neighborhood 89 as NA
+temp[89,] <- temp[88,]
+temp$SNBNAME[89] <- NA
+
+#   Append the super neighborhood field to the data frame
+geotable$SuperNeighborhood[maskcoord] <- temp$SNBNAME[a]
+
+saveRDS(geotable, "~/Dropbox/CrimeStats/GeoTable_temp_23Aug2019.rds")
+```
+
 
 
 
