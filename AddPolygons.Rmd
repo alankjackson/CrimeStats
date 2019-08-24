@@ -99,6 +99,33 @@ GeoTable$Nbhd[maskcoord] <-  apply(a,1,diddle)  #  work on "a" row-wise
 
 ```
 
+##   City of Houston superneighborhoods
+
+Found that the city has defined super-neighborhoods, with no gaps? that cover the whole city? Data from here. We'll take a look at the shapefile.
+
+https://cohgis-mycity.opendata.arcgis.com/datasets/coh-super-neighborhoods
+
+```{r superneighborhood}
+
+#   Read in the shapefiles we downloaded
+COHNeighborhoodpolys <- read_sf("/home/ajackson/Dropbox/CrimeStats/NeighborhoodPolygons/CityOfHouston/COH_SUPER_NEIGHBORHOODS.shp")
+# now need to delete extra crap from file, just to be tidy
+temp <- COHNeighborhoodpolys %>% select(SNBNAME, geometry)
+summary(temp) # check to see what it looks like. Could also do plot(temp)
+#  SNBNAME                   geometry 
+# Length:88          POLYGON      :88  
+# Class :character   epsg:4326    : 0  
+# Mode  :character   +proj=long...: 0  
+#   set CRS. Since Wikimapia is based on Google maps photos, CRS is 
+#   same as Google.
+st_crs(temp) <- googlecrs
+#   turn lines into polygons
+##temp <- st_polygonize(temp)#   Save temp out so it can be used again
+saveRDS(temp,"~/Dropbox/CrimeStats/SuperNeighborhoodPolys.rds")
+
+```
+
+
 *** add zipcodes ***
 The local Houston-Galveston Area Council has GIS datasets for free, including
 a zipcode file from 2010. I will ding them for not having clear documentation
@@ -249,8 +276,9 @@ saveRDS(conlatlong,"~/Dropbox/CrimeStats/ConstablePrecincts.rds")
 #   Neighborhoods
 
 temp <- readRDS("~/Dropbox/CrimeStats/NeighborhoodPolys.rds")
+temp2 <- temp %>% filter(grepl("Meyerland", Name))
 ggmap(gmap, extent='normal', maprange=FALSE, show.legend=FALSE) +
-  geom_sf(data=temp, mapping=aes(Name="blue"),fill=NA, inherit.aes=FALSE, show.legend=FALSE) +
+  geom_sf(data=temp2, mapping=aes(Name="blue"),fill=NA, inherit.aes=FALSE, show.legend=FALSE) +
   coord_sf(xlim=c(-95.6, -95.2), ylim=c(29.6, 29.9)) 
 
 #   Zipcodes
