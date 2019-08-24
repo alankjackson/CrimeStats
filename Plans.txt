@@ -7,6 +7,7 @@ Plans
       - zipcode * done 22 Aug
       - census tract * done 22 Aug
       - neighborhood * done 22 Aug
+      - super neighborhood * done 23 Aug
       - Add neighborhoods from Open Street Map as well
   - clean up status field to be more sensible
   - end up with Address, Beat, Match_address, Lat, Long, Tract. Block, Zip, Neighborhood
