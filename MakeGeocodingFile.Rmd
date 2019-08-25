@@ -255,6 +255,159 @@ geotable$SuperNeighborhood[maskcoord] <- temp$SNBNAME[a]
 saveRDS(geotable, "~/Dropbox/CrimeStats/GeoTable_temp_23Aug2019.rds")
 ```
 
+##  fix some errors
+
+```{r repair}
+
+make_success <- function(address, status) {
+  mask <- grepl(address, geotable$Address, ignore.case = TRUE)
+  print(sum(mask))
+  geotable[mask,]$status  <- status
+  geotable
+}
+
+make_no_census <- function(address, status) {
+  mask1 <- grepl(address, geotable$Address, ignore.case = TRUE)
+  mask2 <- is.na(geotable$CensusTract)
+  mask <- mask1 & mask2
+  print(sum(mask))
+  geotable[mask,]$status  <- status
+  geotable
+}
+
+geotable <- make_success("ROCKLEY RD", "success")
+geotable <- make_success("MILL VALLEY RD", "success")
+geotable <- make_success("PLEASANT VALLEY RD", "success")
+geotable <- make_success("MAPLE VALLEY RD", "success")
+geotable <- make_success("WILD VALLEY RD", "success")
+geotable <- make_success("FARLEY RD", "success")
+geotable <- make_success("SPRING VALLEY RD", "redo")
+geotable <- make_success("LANGLEY RD", "success")
+geotable <- make_no_census("MYKAWA RD", "outside city")
+geotable <- make_no_census("ST EMANUEL ST", "bad street number")
+geotable <- make_success("3899 ST EMANUEL ST", "success")
+geotable <- make_success("ST EMANUEL ,", "redo")
+geotable <- make_success("WILEY RD", "success")
+geotable <- make_success("2699 RUSTIC WOODS DR", "success")
+geotable <- make_success("2799 RUSTIC WOODS DR", "success")
+geotable <- make_success("22699 RUSTIC WOODS DR", "bad street number")
+
+geotable <- make_success("TANGLEY RD", "redo")
+geotable$Address <- str_replace(geotable$Address, "TANGLEY RD", "TANGLEY")
+
+geotable$Address <- str_replace(geotable$Address, "WESTPLACE ,", "WESTPLACE DR ,")
+geotable <- make_success("8299 WESTPLACE DR", "bad street number")
+
+geotable$Address <- str_replace(geotable$Address, "MELROSE PARK PL", "MELROSE PARK RD")
+
+geotable$Address <- str_replace(geotable$Address, "DUBOIS", "DU BOIS")
+geotable$Address <- str_replace(geotable$Address, "DU BOIS RD", "DU BOIS ST")
+geotable$Address <- str_replace(geotable$Address, "DU BOIS ,", "DU BOIS ST ,")
+geotable <- make_success("DU BOIS ST", "redo")
+
+geotable <- make_success("ROLGUM", "redo")
+geotable$Address <- str_replace(geotable$Address, "ROLGUM PL", "ROLGOM PL CT")
+
+geotable <- make_success("YORKBROOK", "redo")
+geotable$Address <- str_replace(geotable$Address, "YORKBROOK", "YORK BROOK DR")
+
+geotable <- make_success("BLUESTEAM ST", "redo")
+geotable$Address <- str_replace(geotable$Address, "BLUESTEAM", "BLUESTEM")
+
+geotable <- make_success("BLUESTONE ,", "redo")
+geotable$Address <- str_replace(geotable$Address, "BLUESTONE ,", "BLUESTONE DR ,")
+
+geotable <- make_success("VAN CLEVE ,", "redo")
+
+geotable$Address <- str_replace(geotable$Address, "JORDON", "JORDAN")
+geotable <- make_success("JORDAN OAKS ,", "redo")
+
+geotable <- make_success("COSTA RICA ,", "redo")
+geotable$Address <- str_replace(geotable$Address, "COSTA RICA ,", "COSTA RICA RD ,")
+
+geotable <- make_success("SUNNYVALE", "redo")
+geotable$Address <- str_replace(geotable$Address, "SUNNYVALE", "SUNNY VALE")
+
+geotable <- make_success("HOLTKAMP", "redo")
+geotable$Address <- str_replace(geotable$Address, "HOLTKAMP", "HOLTCAMP")
+
+geotable <- make_success("GREEN HOOD", "redo")
+geotable$Address <- str_replace(geotable$Address, "GREEN HOOD", "GREENHURST")
+geotable$Address <- str_replace(geotable$Address, "GREENHURST ,", "GREENHURST ST ,")
+
+geotable <- make_success("OHIO", "redo")
+geotable$Address <- str_replace(geotable$Address, "OHIO ST", "OHIO")
+
+geotable <- make_success("BELLACHE", "redo")
+geotable$Address <- str_replace(geotable$Address, "BELLACHE", "BELLA NOCHE")
+
+mask1 <- grepl("INTERCONTINENTAL AIRPORT", geotable$RawAddress)
+sum(mask1)
+mask2 <- grepl("2800-2899 N TERMINAL RD , Houston , TX", geotable$Address)
+sum(mask2)
+mask <- mask1&!mask2
+geotable$Address[mask] <- "2800-2899 N TERMINAL RD , Houston , TX"
+geotable$status[mask] <- "redo"
+
+geotable <- make_success("199 FOREST CENTER DR", "success")
+
+saveRDS(geotable,"~/Dropbox/CrimeStats/GeoTable_24Aug2019.rds")
+```
+
+```{r manual}
+###############   special case function
+special_case <- function(mydf, mask, address, lat, long){
+  if (sum(mask)>0){
+    print(paste(sum(mask), "records changed"))
+    mydf[mask,]$match_address <- address
+    mydf[mask,]$status    <- "success"
+    mydf[mask,]$geocode_status    <- "manual redo"
+    mydf[mask,]$lat    <- lat
+    mydf[mask,]$long   <- long
+    mydf[mask,]$GType    <- "RANGE_INTERPOLATED manual"
+  }
+  return(mydf)
+}
+#################
+
+specific <- tribble(
+  ~block, ~street, ~number, ~lat, ~long, ~zip,
+  "9900-9999", "MACE", "9950", 29.621963, -95.220771, "Houston, TX 77034",
+  "1800-1899", "DOWLING", "1850", 29.743404, -95.357923, "Houston, TX 77003",
+  "12100-12199", "MELROSE PARK RD", "12150", 29.876002, -95.373002, "Houston, TX 77037",
+  "12200-12299", "MELROSE PARK RD", "12250", 29.876937, -95.373018, "Houston, TX 77037"
+)
+
+for (i in 1:nrow(specific)) {
+  mask <- grepl(paste(specific[i,]$block, specific[i,]$street), 
+                geotable$Address, ignore.case=TRUE)
+  print(paste(specific[i,]$street, sum(mask)))
+  geotable <- special_case(geotable, 
+                   mask, 
+                   paste0(specific[i,]$number, " ", 
+                          specific[i,]$street, ", ",
+                          specific[i,]$zip),
+                  specific[i,]$lat, 
+                  specific[i,]$long 
+                   )
+}
+
+
+```
+
+
+##  clean up
+
+```{r clean up}
+
+#   Clean up status field
+#       (success, failed, impossible, bad street number, outside city)
+
+geotable$status <- str_replace(geotable$status, "address out of range", "bad street number")
+
+```
+
+
 
 
 
