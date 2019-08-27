@@ -21,7 +21,7 @@ googlecrs <- 4326
 
 options(stringsAsFactors = FALSE)
 
-geotable <- readRDS("~/Dropbox/CrimeStats/GeoTable_19Aug2019.rds")
+geotable <- readRDS("~/Dropbox/CrimeStats/GeoTable_24Aug2019.rds")
 
 generated <- readRDS("~/Dropbox/CrimeStats/Generated_Coordinates.rds")
 
@@ -351,6 +351,7 @@ geotable$status[mask] <- "redo"
 
 geotable <- make_success("199 FOREST CENTER DR", "success")
 
+
 saveRDS(geotable,"~/Dropbox/CrimeStats/GeoTable_24Aug2019.rds")
 ```
 
@@ -374,6 +375,7 @@ specific <- tribble(
   ~block, ~street, ~number, ~lat, ~long, ~zip,
   "9900-9999", "MACE", "9950", 29.621963, -95.220771, "Houston, TX 77034",
   "1800-1899", "DOWLING", "1850", 29.743404, -95.357923, "Houston, TX 77003",
+  "3800-3899", "CUMMINS GREEN ST", "3850", 29.730112, -95.440274, "Houston, TX 77046",
   "12100-12199", "MELROSE PARK RD", "12150", 29.876002, -95.373002, "Houston, TX 77037",
   "12200-12299", "MELROSE PARK RD", "12250", 29.876937, -95.373018, "Houston, TX 77037"
 )
@@ -398,12 +400,22 @@ for (i in 1:nrow(specific)) {
 
 ##  clean up
 
+Status field will end up being:
+
+* success - good address, good laocation (so far as I know)
+* impossible - not an address, e.g., PO Box or so badly mangled resolution is impossible
+* bad street number - street number out of range of possible, or street name bad
+* outside city - good address but not in city. Maybe not in state!
+* rework - address is probably recoverable but needs future manual effort
+
 ```{r clean up}
 
 #   Clean up status field
 #       (success, failed, impossible, bad street number, outside city)
 
 geotable$status <- str_replace(geotable$status, "address out of range", "bad street number")
+geotable$status <- str_replace(geotable$status, "Road only, street number ignored", "bad street number")
+geotable$status <- str_replace(geotable$status, "City only, street ignored", "bad street number")
 
 ```
 
