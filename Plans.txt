@@ -8,7 +8,7 @@ Plans
       - census tract * done 22 Aug
       - neighborhood * done 22 Aug
       - super neighborhood * done 23 Aug
-      - Add neighborhoods from Open Street Map as well
+      - Add neighborhoods from Open Street Map as well, someday
   - clean up status field to be more sensible
   - end up with Address, Beat, Match_address, Lat, Long, Tract. Block, Zip, Neighborhood
      Source (census, google, manual, generated), Status (success, failed, impossible, out of range, outside boundary)
