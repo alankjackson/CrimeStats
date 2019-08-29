@@ -122,6 +122,17 @@ unmatched[mask,]$Address  <- str_replace(unmatched[mask,]$Address,
                                           "AIRPORT")
 unmatched[mask,]$status  <- "redo"
 
+#  ----------  W Loop N
+
+mask1 <- grepl("W LOOP S", unmatched$Address)
+mask2 <- grepl("18F20|1A50", unmatched$Beat)
+mask3 <- grepl("redo", unmatched$status)
+mask <- mask1&mask2&mask3
+sum(mask)
+unmatched$Address[mask] <- str_replace(unmatched$Address[mask], "W LOOP S FWY ,", 
+                                                    "W LOOP N FWY ,")
+
+
 
 #  ----------  W Loop S
 
@@ -413,6 +424,11 @@ sum(mask)
 unmatched[mask,]$status  <- "fail"
 
 
+unmatched$Address <- str_replace(unmatched$Address, "PKWT", "PKWY")
+unmatched$Address <- str_replace(unmatched$Address, "LOOP W ,", "LOOP W FWY ,")
+unmatched$Address <- str_replace(unmatched$Address, "LOOP S ,", "LOOP S FWY ,")
+unmatched$Address <- str_replace(unmatched$Address, "9N", "9 N")
+
 ```
 ##  redo special cases just in case
 
@@ -617,22 +633,23 @@ NSamE <- Fwy_interpolate(unmatched, "N SAM HOUSTON PKWY E", 150, 9750)
 SSamE <- Fwy_interpolate(unmatched, "S SAM HOUSTON PKWY E", 3650, 12350)
 ESamS <- Fwy_interpolate(unmatched, "EAST SAM HOUSTON PKWY S", 5550, 7850)
 SSamW <- Fwy_interpolate(unmatched, "S SAM HOUSTON PKWY W", 3050, 12350)
-WSamS <- Fwy_interpolate(unmatched, "W SAM HOUSTON PKWY S", 150, 10450)
+WSamS <- Fwy_interpolate(unmatched, "W SAM HOUSTON PKWY S", 150, 12950)
 Gulf <- Fwy_interpolate(unmatched, "GULF FWY", 450, 21650)
-SouthFwy <- Fwy_interpolate(unmatched, "SOUTH FWY", 2350, 13350)
-SWFwy <- Fwy_interpolate(unmatched, "SOUTHWEST FWY", 450, 11650)
+SouthFwy <- Fwy_interpolate(unmatched, "SOUTH FWY", 2350, 13750)
+SWFwy <- Fwy_interpolate(unmatched, "SOUTHWEST FWY", 150, 11650)
 Blackhawk <- Fwy_interpolate(unmatched, "BLACKHAWK BLVD", 8550, 9750)
 WestheimPkwy <- Fwy_interpolate(unmatched, "WESTHEIMER PKWY", 15150, 20050)
 WOrem <- Fwy_interpolate(unmatched, "W OREM DR", 1250, 7950)
-WLoopS <- Fwy_interpolate(unmatched, "W LOOP S ", 1150, 8950)
+WLoopS <- Fwy_interpolate(unmatched, "W LOOP S FWY", 1150, 9450)
+WLoopN <- Fwy_interpolate(unmatched, "W LOOP N FWY", 250, 2450)
 SLoopE <- Fwy_interpolate(unmatched, "S LOOP E FWY", 3350, 8450)
-SLoopW <- Fwy_interpolate(unmatched, "S LOOP W", 550, 4550)
+SLoopW <- Fwy_interpolate(unmatched, "S LOOP W FWY", 550, 4550)
 ELoopN <- Fwy_interpolate(unmatched, "E LOOP N FWY", 250, 3150)
 EastFwy <- Fwy_interpolate(unmatched, "EAST FWY", 250, 16250)
-Kingwood <- Fwy_interpolate(unmatched, "KINGWOOD DR", 250, 5850)
+Kingwood <- Fwy_interpolate(unmatched, "KINGWOOD DR", 250, 6450)
 BarkClod <- Fwy_interpolate(unmatched, "BARKER-CLODINE RD", 1850, 3450)
 WLakeHouPkwya <- Fwy_interpolate(unmatched, "W LAKE HOUSTON PKWY", 1350, 6150)
-WLakeHouPkwyb <- Fwy_interpolate(unmatched, "W LAKE HOUSTON PKWY", 12650, 15750)
+WLakeHouPkwyb <- Fwy_interpolate(unmatched, "W LAKE HOUSTON PKWY", 12650, 16650)
 ScottSt <- Fwy_interpolate(unmatched, "SCOTT ST", 10150, 13450)
 NWayside <- Fwy_interpolate(unmatched, "N WAYSIDE DR", 350, 10950)
 EOrem <- Fwy_interpolate(unmatched, "E OREM DR", 3950, 7550)
@@ -641,7 +658,7 @@ WBellAve <- Fwy_interpolate(unmatched, "W BELLFORT AVE", 1650, 11650)
 generated <- bind_rows(katy, northfwy, eastex, NSamE, SSamE,
                        ESamS, SSamW, WSamS, Gulf, SouthFwy,
                        SWFwy, Blackhawk, WestheimPkwy, WOrem,
-                       WLoopS, SLoopE, SLoopW, ELoopN, EastFwy,
+                       WLoopS, SLoopE, SLoopW, ELoopN, WLoopN, EastFwy,
                        Kingwood, BarkClod, WLakeHouPkwya, WLakeHouPkwyb, ScottSt, NWayside,
                        EOrem, WBellAve) 
 generated <- bind_rows(generated, WBellAve) 
@@ -789,12 +806,14 @@ specific <- tribble(
   "1600-1699", "W LOOP S", "1650", 29.750432, -95.455807, "Houston, TX 77056",
   "3200-3299", "W LOOP S", "3250", 29.731214, -95.460200, "Houston, TX 77056",
   "9000-9099", "W LOOP S", "9050", 29.682911, -95.459082, "Houston, TX 77096",
+  "9500-9599", "W LOOP S", "9550", 29.680154, -95.458928, "Houston, TX 77096",
   "1500-1599", "N LOOP E", "1550", 29.813095, -95.353224, "Houston, TX 77009",
   "1600-1699", "N LOOP W", "1650", 29.813286, -95.430293, "Houston, TX 77018",
   "3200-3299", "S LOOP E", "3250", 29.680694, -95.378541, "Houston, TX 77021",
   "8500-8599", "S LOOP E", "8550", 29.707600, -95.270795, "Houston, TX 77017",
   "4400-4499", "S LOOP E", "4450", 29.680889, -95.355898, "Houston, TX 77051",
   "6300-6399", "S LOOP E", "6350", 29.697167, -95.312736, "Houston, TX 77087",
+  "300-399", "S LOOP W", "350", 29.680560, -95.382131, "Houston, TX 77054",
   "400-499", "S LOOP W", "450", 29.680707, -95.383576, "Houston, TX 77054",
   "1300-1399", "S LOOP W", "1350", 29.680271, -95.396981, "Houston, TX 77054",
   "2000-2099", "S LOOP W", "2050", 29.678123, -95.409325, "Houston, TX 77054",
@@ -850,6 +869,7 @@ specific <- tribble(
   "6600-6699", "SOUTH FWY", "6650", 29.704571, -95.374954, "Houston, TX 77021",
   "8600-8699", "SOUTH FWY", "8650", 29.662178, -95.386084, "Houston, TX 77051",
   "13400-13499", "SOUTH FWY", "13450", 29.599470, -95.386879, "Houston, TX 77047",
+  "13800-13899", "SOUTH FWY", "13850", 29.593358, -95.386583, "Houston, TX 77047",
   "17100-17199", "NORTH FWY", "17150", 30.015162, -95.428258, "Houston, TX 77090",
   "11900-11999", "NORTH FWY", "11950", 29.935831, -95.412294, "Houston, TX 77090",
   "7900-7999", "NORTH FWY", "7950", 29.876105, -95.411553, "Houston, TX 77090",
@@ -875,6 +895,7 @@ specific <- tribble(
   "12300-12399", "EAST FWY", "12350", 29.770351, -95.219647, "Houston, TX 77090",
   "15100-15199", "EAST FWY", "15150", 29.772281, -95.147342, "Houston, TX 77090",
   "16300-16399", "EAST FWY", "16350", 29.784033, -95.109351, "Houston, TX 77090",
+  "0-99", "SOUTHWEST FWY", "50", 29.737811, -95.382206, "Houston, TX 77004",
   "200-299", "SOUTHWEST FWY", "250", 29.734055, -95.370700, "Houston, TX 77004",
   "300-399", "SOUTHWEST FWY", "350", 29.732978, -95.375308, "Houston, TX 77004",
   "4000-4099", "SOUTHWEST FWY", "4050", 29.728948, -95.442494,  "Houston, TX 77004",
@@ -919,6 +940,7 @@ specific <- tribble(
   "5500-5599", "KINGWOOD DR", "5550", 30.053778, -95.163174, "Houston, TX 77339",
   "5700-5799", "KINGWOOD DR", "5750", 30.055118, -95.160204, "Houston, TX 77339",
   "5900-5999", "KINGWOOD DR", "5950", 30.060951, -95.157230, "Houston, TX 77339",
+  "6500-6599", "KINGWOOD DR", "6550", 30.065553, -95.153076, "Houston, TX 77339",
   "19500-19599", "KINGWOOD DR", "19550", 30.052825, -95.253268, "Houston, TX 77339",
   "19600-19699", "KINGWOOD DR", "19650", 30.053252, -95.255972, "Houston, TX 77339",
   "19700-19799", "KINGWOOD DR", "19750", 30.053038, -95.257721, "Houston, TX 77339",
@@ -937,6 +959,8 @@ specific <- tribble(
   "14200-14299", "W LAKE HOUSTON PKWY", "14250", 29.931229, -95.176466, "Houston, TX 77339",
   "15200-15299", "W LAKE HOUSTON PKWY", "15250", 29.947203, -95.174896, "Houston, TX 77339",
   "15800-15899", "W LAKE HOUSTON PKWY", "15850", 29.956555, -95.171688, "Houston, TX 77339",
+  "16400-16499", "W LAKE HOUSTON PKWY", "16450", 29.961614, -95.168542, "Houston, TX 77339",
+  "16700-16799", "W LAKE HOUSTON PKWY", "16750", 29.966301, -95.169486, "Houston, TX 77339",
   "200-299", "N WAYSIDE DR", "250", 29.759568, -95.294591, "Houston, TX 77020",
   "700-799", "N WAYSIDE DR", "750", 29.762834, -95.294487, "Houston, TX 77020",
   "1000-1099", "N WAYSIDE DR", "1050", 29.769176, -95.293332, "Houston, TX 77020",
@@ -1316,6 +1340,261 @@ redos <- unmatched %>%
 
 Fix W Loop S Fwy
     S Sam Houston Pkwy E (7909)
+```{r census geocoder}
+
+###############################################################
+#############   GetResult
+###############################################################
+GetResult <- function(urlreq) {
+  #  required libraries 
+  
+  require(httr)
+  
+  #   set up to retry twice on server type error (which usually works)
+  attempt <- 1
+  result <- data.frame(status_code=0)
+  while(result$status_code!=200 && attempt<=3 ) {
+    if (attempt>1){print(paste("attempted", attempt))}
+    attempt <- attempt + 1
+    try(
+      #     Go get result
+      result <- httr::GET(urlreq)
+    )
+  }
+  return(result)
+}
+###############################################################
+#############   Census_decoder
+###############################################################
+Census_decoder <- function(address, city=NA, state=NA, zip=NA){
+  
+  urlreq <- paste0("https://geocoding.geo.census.gov/geocoder/geographies/address?street=",gsub(" ", "+",address))
+  if (!is.na(city)){urlreq <- paste0(urlreq,"&city=", city)}
+  if (!is.na(state)){urlreq <- paste0(urlreq,"&state=", state)}
+  if (!is.na(zip)){urlreq <- paste0(urlreq,"&zip=", zip)}
+  urlreq <- paste0(urlreq,"&benchmark=Public_AR_Current&vintage=Current_Current&format=json")
+  
+  print(urlreq)
+  result <- GetResult(urlreq)
+  #     did we succeed?
+  if (result$status_code != 200) { # failure
+    return(data.frame(
+      status=paste("fail_code: ",result$status_code),
+      match_address=NA,
+      lat=NA,
+      long=NA,
+      tract=NA,
+      block=NA
+    ))
+  } else {
+  result <- httr::content(result)
+  Num_matches <- length(result[["result"]][["addressMatches"]])
+  
+  if (Num_matches <= 0) { # failed to find address
+    return(data.frame(
+      status="fail_length",
+      match_address=NA,
+      lat=NA,
+      long=NA,
+      tract=NA,
+      block=NA
+    ))
+  }
+    
+    # pick matching result if multiples offered
+  for (i in 1:Num_matches) {
+    temp <- result[["result"]][["addressMatches"]][[i]]
+    if (grepl(address, 
+        str_split(temp[["matchedAddress"]], ",")[1])) { break }
+  }
+    tract <- temp[["geographies"]][[
+                   "2010 Census Blocks"]][[1]][["TRACT"]]
+    if (is.null(tract)){
+      return(data.frame(
+        status="fail_tract",
+        match_address=NA,
+        lat=NA,
+        long=NA,
+        tract=NA,
+        block=NA
+      ))
+    }
+    status <- "success"
+    match_address=temp[["matchedAddress"]] 
+    lat=temp[["coordinates"]][["y"]]
+    long=temp[["coordinates"]][["x"]]
+    tract=temp[["geographies"]] [[
+                "2010 Census Blocks"]][[1]][["TRACT"]]
+    block=temp[["geographies"]] [[
+                "2010 Census Blocks"]][[1]][["BLOCK"]]
+    
+    return(data.frame(
+      status=status,
+      match_address=match_address,
+      lat=lat,
+      long=long,
+      tract= tract,
+      block=block
+    ))
+  } # end if/else
+}
+```
+##  Census Geocoding
+
+Call census geocoder for address, and on success
+add in the lat long values as well as other good stuff.
+
+```{r do geocoding}
+
+###############################################################
+#############   getlatlong with declared zipcode
+###############################################################
+getlatlong <- function(addr, zip, newaddr){
+  x <- unlist(strsplit(unlist(addr), ","))
+  city <- trimws(x[2])
+  state <- trimws(x[3])
+  adr <- unlist(strsplit(str_extract(x[1], "^[0-9]+-[0-9]+"),"-"))[1]
+  adr <- str_replace(adr, "00$", newaddr)
+  adr <- str_replace(adr, "^0$", newaddr)
+  street <- trimws(sub("^[0-9]+-[0-9]+", "", x[1]))
+  
+  newstreet <- NA
+    loc <- Census_decoder(paste(adr, street), city, state, zip)
+    if (loc[1] != "success"){ # try across the street
+      adrplus <- as.character(as.numeric(adr)+1)
+      loc <- Census_decoder(paste(adrplus, street), city, state, zip)
+    }
+    if (loc[1] == "success") {
+        # does the street match?
+        x <- unlist(strsplit(loc$match_address, ","))
+        newstreet <- trimws(sub("^[0-9]+", "", x[1]))
+    }
+  
+  # if we couldn't get this test to succeed, then give up.
+  
+  if (is.na(newstreet)) {
+    print("===========")
+    print("failure")
+    print("===========")
+    return(data.frame(
+      status="fail",
+      match_address=x[1],
+      lat=NA,
+      long=NA,
+      tract=NA,
+      block=NA
+    ))
+  }
+
+  #   return data
+  
+  return(data.frame(
+    status="success",
+    match_address=loc$match_address,
+    lat=loc[3],
+    long=loc[4],
+    tract=loc[5],
+    block=loc[6]
+  ))
+  
+}
+
+```
 
 
+##  match against census
 
+```{r Now work through census data}
+
+#    special cases - digits replace last 2 on address
+special <- tribble(
+  ~match, ~addr,
+  "BAY AREA",           "50"
+)
+
+onlys <- c(" W BAY AREA ")
+
+##########################################
+##    spin through data geocoding
+##########################################
+
+begin <- 1
+successes <- 0
+trys <- 0
+starttime <- now()
+
+for (i in begin:nrow(unmatched)) {
+  if (i==begin){starttime <- now()}
+#for (i in begin:(begin+50)) {
+  if (unmatched[i,]$status=="redo"){ # only the redo's
+    # only do selected cases
+    #if (!any(str_detect(unmatched[i,]$Address, onlys))){next()}
+    trys <- trys + 1
+    print(paste("--->",i,unmatched[i,1], 
+                now()+((now()-starttime)/trys)*(nrow(unmatched)-i)
+          ))
+    # Did I already succeed at this match somewhere?
+    a <- check_match(unmatched[i,]$Address, unmatched)
+    if (is_tibble(a)) {
+      unmatched[i,4:10] <- a[1,4:10]
+      print("found previous match in current")
+      next
+    }
+    
+    if(any(str_detect(unmatched[i,]$Address, special$match))){
+      newaddr <- special[str_detect(unmatched[i,]$Address, special$match),]$addr
+    }
+    
+    latlong <- getlatlong(unmatched[i,]$Address, "77546", newaddr)
+    if (latlong$status=="success") {
+      successes <- successes + 1
+      print(paste("=======final=======",latlong[1,]))
+      unmatched[i,]$match_address  <- latlong$match_address
+      unmatched[i,]$lat            <- latlong$lat
+      unmatched[i,]$long           <- latlong$long
+      unmatched[i,]$tract          <- latlong$tract
+      unmatched[i,]$block          <- latlong$block
+      unmatched[i,]$geocode_status <- "census"
+      unmatched[i,]$status         <- latlong$status
+    } else {
+      unmatched[i,]$geocode_status <- "census fail"
+      unmatched[i,]$status         <- latlong$status
+    }
+  }
+}
+print(paste("successes =", successes))
+
+```
+
+
+##  add in generated points
+
+```{r add generated points}
+
+##########################################
+##    spin through data geocoding
+##########################################
+
+begin <- 1
+
+for (i in begin:nrow(unmatched)) {
+  if (unmatched[i,]$status=="redo"){ # only the redo's
+    print(paste("--->",i,unmatched[i,1]))
+    # Did I already succeed at this match somewhere?
+    a <- check_match(unmatched[i,]$Address, generated)
+    if (is_tibble(a)) {
+      unmatched[i,4:10] <- a[1,2:6]
+      print("found previous match in generated")
+      next
+    }
+    # Did I already succeed at this match somewhere?
+    #a <- check_match(unmatched[i,]$Address, unmatched)
+   # if (is_tibble(a)) {
+   #   unmatched[i,4:10] <- a[1,4:10]
+   #   print("found previous match in current")
+   #   next
+   # }
+  }
+}
+
+```
