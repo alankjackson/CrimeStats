@@ -21,7 +21,7 @@ googlecrs <- 4326
 
 options(stringsAsFactors = FALSE)
 
-geotable <- readRDS("~/Dropbox/CrimeStats/GeoTable_24Aug2019.rds")
+geotable <- readRDS("~/Dropbox/CrimeStats/GeoTable_27Aug2019.rds")
 
 generated <- readRDS("~/Dropbox/CrimeStats/Generated_Coordinates.rds")
 
@@ -121,7 +121,8 @@ saveRDS(geotable, "~/Dropbox/CrimeStats/GeoTable_22Aug2019_withgen.rds")
 ####   mask out rows with bad coordinates
 maskcoord <- !(is.na(geotable$lat) | is.na(geotable$long))
 sum(maskcoord)
-maskcoord <- maskcoord & !grepl("fail", geotable$geocode_status)
+#maskcoord <- maskcoord & !grepl("fail", geotable$geocode_status)
+maskcoord <- maskcoord & grepl("success", geotable$status)
 sum(maskcoord)
 #  Create a temporary sf data frame for doing the intersects
 # set longitudes as the first column and latitudes as the second
@@ -221,13 +222,11 @@ hist(rowSums(a))# just curious how they are distributed.
 
 diddle <- function (i) {nbhd$Name[i]}
 
-geotable$Nbhd[maskcoord] <-  apply(a,1,diddle)  #  work on "a" row-wise
+geotable$Wikimapia_Nbhd[maskcoord] <-  apply(a,1,diddle)  #  work on "a" row-wise
 
 #   Clean up unknown neighborhoods and clarify what we are using
 
-geotable$Nbhd[geotable$Nbhd=="character(0)"] <- NA
-
-names(geotable)[names(geotable) == 'Nbhd'] <- 'Wikimapia_Nbhd'
+geotable$Wikimapia_Nbhd[geotable$Wikimapia_Nbhd=="character(0)"] <- NA
 
 saveRDS(geotable, "~/Dropbox/CrimeStats/GeoTable_temp_23Aug2019.rds")
 
@@ -351,8 +350,74 @@ geotable$status[mask] <- "redo"
 
 geotable <- make_success("199 FOREST CENTER DR", "success")
 
+geotable <- make_no_census("ELDRIDGE PKWY", "rework")
+geotable <- make_no_census("ELDRIDGE RD", "rework")
+geotable <- make_no_census("WEST ENGLAND COURT", "redo")
+geotable$Address <- str_replace(geotable$Address, "STONE PARK LN", "STONE PARK RD")
+geotable <- make_success("KEATS ST", "success")
+geotable$Address <- str_replace(geotable$Address, "KEATS ST", "KEATS AVE")
+geotable <- make_no_census("AEROPARK DR", "redo")
 
-saveRDS(geotable,"~/Dropbox/CrimeStats/GeoTable_24Aug2019.rds")
+geotable$Address <- str_replace(geotable$Address, "2351 RD", "2351")
+geotable$Address <- str_replace(geotable$Address, "98 W", "99 W")
+geotable <- make_success("2799 W BAY AREA BLVD", "outside city")
+geotable$Address <- str_replace(geotable$Address, " W PARK $", " W PARK AT SHADY VILLA , Houston , TX")
+geotable <- make_no_census("W PARK AT SHADY", "rework")
+geotable <- make_no_census("W PARK VIEW", "rework")
+geotable$Address <- str_replace(geotable$Address, "PKWT", "PKWY")
+
+mask1 <- grepl("S LOOP E FWY", geotable$Address)
+sum(mask1)
+mask2 <- grepl("redo", geotable$status)
+sum(mask2)
+mask <- mask1&mask2
+sum(mask)
+geotable$Address[mask] <- str_replace(geotable$Address[mask], "E FWY", "W FWY")
+
+mask <- grepl("NORTH FWY", geotable$Address)
+sum(mask)
+geotable$status[mask] <- str_replace(geotable$status[mask], "redo", "bad street number")
+
+mask <- grepl("FWY", geotable$Address)
+sum(mask)
+geotable$status[mask] <- str_replace(geotable$status[mask], "redo", "bad street number")
+
+mask <- grepl("PKWY", geotable$Address)
+sum(mask)
+geotable$status[mask] <- str_replace(geotable$status[mask], "redo", "bad street number")
+
+mask <- grepl("BELLFORT", geotable$Address)
+sum(mask)
+geotable$status[mask] <- str_replace(geotable$status[mask], "redo", "bad street number")
+
+mask <- grepl("OREM", geotable$Address)
+sum(mask)
+geotable$status[mask] <- str_replace(geotable$status[mask], "redo", "bad street number")
+
+mask1 <- grepl("DU BOIS", geotable$Address)
+mask2 <- grepl("6800|6900", geotable$Address)
+mask <- mask1&mask2
+sum(mask)
+geotable$Address[mask] <- str_replace(geotable$Address[mask], "ST", "RD")
+
+geotable$Address <- str_replace(geotable$Address, "VAN CLEVE", "VAN CLEVE ST")
+geotable$Address <- str_replace(geotable$Address, "JORDAN OAKS", "JORDAN OAKS ST")
+geotable$Address <- str_replace(geotable$Address, "ST EMANUEL ,", "ST EMANUEL ST ,")
+
+#   column screwup repair
+mask <- grepl("[9]", geotable$status)
+sum(mask)
+geotable$lat[mask] <- geotable$block[mask]
+geotable$long[mask] <- geotable$status[mask]
+geotable$geocode_status[mask] <- "generated"
+geotable$match_address[mask] <-  paste0(as.character(as.numeric(str_extract(
+                                 geotable$Address[mask],"\\d*"))+50),
+                                 str_remove(geotable$Address[mask],"\\d+-\\d+"))
+geotable$tract[mask] <- NA
+geotable$block[mask] <- NA
+geotable$status[mask] <- "success"
+
+saveRDS(geotable,"~/Dropbox/CrimeStats/GeoTable_28Aug2019.rds")
 ```
 
 ```{r manual}
@@ -376,6 +441,32 @@ specific <- tribble(
   "9900-9999", "MACE", "9950", 29.621963, -95.220771, "Houston, TX 77034",
   "1800-1899", "DOWLING", "1850", 29.743404, -95.357923, "Houston, TX 77003",
   "3800-3899", "CUMMINS GREEN ST", "3850", 29.730112, -95.440274, "Houston, TX 77046",
+  "8400-8499", "WILLOW PL DR S", "8450", 29.959705, -95.557256, "Houston, TX 77070",
+  "100-199", "NORTHPINES DR", "150", 30.065324, -95.246784, "Houston, TX 77339",
+  "14400-14499", "STONE PARK LN", "14450", 29.613147, -95.496907, "Houston, TX 77339",
+  "14400-14499", "HEATHROW FOREST PKWY", "14450", 29.926167, -95.328708, "Houston, TX 77032",
+  "0-99", "ALLEN PKWY", "50", 29.758732, -95.371485, "Houston, TX 77002",
+  "700-799", "S MAYDE CREEK DR", "750", 29.778621, -95.624493, "Houston, TX 77079",
+  "3100-3199", "FM 2351", "3150", 29.568980, -95.169558, "WEBSTER, TX 77598",
+  "3200-3299", "FM 2351", "3250", 29.568159, -95.170341, "WEBSTER, TX 77598",
+  "3900-3999", "FM 2351", "3950", 29.558509, -95.178667, "WEBSTER, TX 77598",
+  "10900-10999", "GREENBEND BLVD", "10950", 29.940254, -95.427968, "Houston, TX 77567",
+  "12600-12699", "RODEO SQUARE DR", "12650", 29.706075, -95.606461, "Houston, TX 77072",
+  "200-299", "W BAY AREA BLVD", "250", 29.547423, -95.130404, "Houston, TX 77598",
+  "1700-1799", "W BAY AREA BLVD", "1750", 29.537674, -95.153514, "Houston, TX 77546",
+  "1800-1899", "W BAY AREA BLVD", "1850", 29.537385, -95.154984, "Houston, TX 77546",
+  "6800-6899", "DU BOIS RD", "6850", 29.862053, -95.451543, "Houston, TX 77091",
+  "6900-6999", "DU BOIS RD", "6950", 29.862722, -95.451561, "Houston, TX 77091",
+  "4900-4999", "AEROPARK DR", "4950", 29.934990, -95.315720, "Houston, TX 77032",
+  "5200-5299", "AEROPARK DR", "5250", 29.934957, -95.313998, "Houston, TX 77032",
+  "19400-19499", "YORK BROOK DR", "19450", 29.540134, -95.153239, "Houston, TX 77546",
+  "2100-2199", "VAN CLEVE ST", "2150", 29.612056, -95.390365, "Houston, TX 77047",
+  "2200-2299", "VAN CLEVE ST", "2250", 29.612075, -95.389222, "Houston, TX 77047",
+  "15100-15199", "JORDAN OAKS ST", "15150", 29.606625, -95.467391, "Houston, TX 77053",
+  "5300-5399", "COSTA RICA RD", "5350", 29.836857, -95.47084, "Houston, TX 77092",
+  "3200-3299", "SUNNY VALE DR", "3250", 30.062019, -95.169449, "Houston, TX 77345",
+  "6400-6499", "BELLA NOCHE DR", "6450", 30.077483, -95.522487, "Houston, TX 77379",
+  "800-899", "ST EMANUEL ST", "850", 29.75250,	-95.35448, "Houston, TX 77003",
   "12100-12199", "MELROSE PARK RD", "12150", 29.876002, -95.373002, "Houston, TX 77037",
   "12200-12299", "MELROSE PARK RD", "12250", 29.876937, -95.373018, "Houston, TX 77037"
 )
@@ -417,6 +508,23 @@ geotable$status <- str_replace(geotable$status, "address out of range", "bad str
 geotable$status <- str_replace(geotable$status, "Road only, street number ignored", "bad street number")
 geotable$status <- str_replace(geotable$status, "City only, street ignored", "bad street number")
 
+mask <- grepl("Distance", geotable$status)
+sum(mask)
+geotable$status[mask] <- "rework"
+
+mask <- grepl("BOX", geotable$Address)
+sum(mask)
+geotable$status[mask] <- "impossible"
+mask <- grepl("fail", geotable$status)
+sum(mask)
+geotable$status[mask] <- "impossible"
+
+geotable$status <- str_replace(geotable$status, "no result", "bad street number")
+geotable$status <- str_replace(geotable$status, "Not an address", "impossible")
+geotable$status <- str_replace(geotable$status, "boundary", "city")
+
+sort(unique(geotable$status))
+sort(unique(geotable$geocode_status))
 ```
 
 
