@@ -9,9 +9,9 @@ Plans
       - neighborhood * done 22 Aug
       - super neighborhood * done 23 Aug
       - Add neighborhoods from Open Street Map as well, someday
-  - clean up status field to be more sensible
-  - end up with Address, Beat, Match_address, Lat, Long, Tract. Block, Zip, Neighborhood
-     Source (census, google, manual, generated), Status (success, failed, impossible, out of range, outside boundary)
+  - clean up status field to be more sensible * done 28 Aug
+  - end up with Address, Beat, Match_address, Lat, Long, Tract, Block, Zip, Neighborhood
+     Source (census, google, manual, generated), Status (success, failed, impossible, out of range, outside boundary) * done 30 Aug
      
   - Make neural net training set (similar but also include raw address)
   
