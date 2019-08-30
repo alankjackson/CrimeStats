@@ -1,0 +1,28 @@
+---
+title: "Make Neural Net Training Dataset"
+author: "Alan Jackson"
+date: "8/30/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+
+Districts <- c("1a", "2a", "3b", "4f", "5f", "6b", "7c", "8c", "9c", "10h", "11h", "12d", "13d", "14d", "15e", "16e", "17e", "18f", "19g", "20g", "24c", "22b")
+
+geoTable <- readRDS("~/Dropbox/CrimeStats/GeoTable_Final_30Aug2019.rds")
+
+```
+
+##  match up raw addresses
+
+Read in raw addresses and match with cleaned up set to give a before/after set.
+
+```{r match raw}
+
+olddf <- readRDS("~/Dropbox/CrimeStats/District24cReCleanData.rds")
+
+```
+
