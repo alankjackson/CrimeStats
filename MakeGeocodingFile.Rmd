@@ -21,7 +21,7 @@ googlecrs <- 4326
 
 options(stringsAsFactors = FALSE)
 
-geotable <- readRDS("~/Dropbox/CrimeStats/GeoTable_27Aug2019.rds")
+geotable <- readRDS("~/Dropbox/CrimeStats/GeoTable_28Aug2019.rds")
 
 generated <- readRDS("~/Dropbox/CrimeStats/Generated_Coordinates.rds")
 
@@ -525,6 +525,47 @@ geotable$status <- str_replace(geotable$status, "boundary", "city")
 
 sort(unique(geotable$status))
 sort(unique(geotable$geocode_status))
+
+#   This is not quite correct - there are small areas not in a super neighborhood. Sigh.
+mask1 <- is.na(geotable$SuperNeighborhood)
+sum(mask1)
+mask2 <- geotable$status=="success"
+mask <- mask1&mask2
+sum(mask)
+geotable$status[mask] <- "outside city"
+
+#   Undo the superneighborhood damage... is point inside a beat boundary?.
+
+mask1 <- is.na(geotable$lat)
+sum(mask1)
+mask2 <- geotable$status=="outside city"
+mask <- mask1&mask2
+sum(mask)
+geotable$status[mask] <- "rework"
+
+#  Create a temporary sf data frame for doing the intersects
+# set longitudes as the first column and latitudes as the second
+maskcoord <- geotable$status=="outside city"
+dat <- data.frame(Longitude=geotable$long[maskcoord], Latitude=geotable$lat[maskcoord], Address=geotable$Address[maskcoord], stringsAsFactors = FALSE)
+
+dat <- st_as_sf(dat, coords=c("Longitude", "Latitude"), crs=googlecrs, agr = "identity")
+
+Beats <- read_sf('/home/ajackson/Dropbox/CrimeStats/BeatPolys/Houston_Police_Beats.shp')
+
+a <- st_intersects(dat, Beats, sparse = TRUE)
+# Replace empty values with 0
+a <- unlist(replace(a, !sapply(a, length),0))
+geotable$status[maskcoord][a!=0] <- "success"
+geotable$SuperNeighborhood[maskcoord][a!=0] <- "None"
+
+#   Final cleanup
+
+geotable <- 
+  geotable %>% 
+  select(Address, Beat, n, match_address, lat, long, geocode_status, status, RawAddress, Zip_Code, CountyFIP, CensusTract, CensusBlock, Wikimapia_Nbhd, SuperNeighborhood) %>% 
+  rename(Source=geocode_status)
+  
+saveRDS(geotable,"~/Dropbox/CrimeStats/GeoTable_Final_30Aug2019.rds")
 ```
 
 
